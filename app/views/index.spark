@@ -1,69 +1,570 @@
 @title('Home')
+@bodyClass('landing-page')
 
-<div style="max-width:860px;margin:4rem auto;padding:0 1.5rem;font-family:system-ui,sans-serif;">
+<style>
+    .landing-page main {
+        overflow: hidden;
+    }
 
-    <div style="text-align:center;margin-bottom:3rem;">
-        <h1 style="font-size:3rem;color:#1e293b;margin-bottom:.5rem;">
-            ⚡ <span style="color:#f59e0b;">SparkPHP</span>
-        </h1>
-        <p style="font-size:1.25rem;color:#64748b;">Write what matters.</p>
-    </div>
+    .landing-page .landing-shell {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem 1.5rem 5rem;
+    }
 
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1.5rem;">
+    .landing-page .hero {
+        padding: 1.25rem 0 2rem;
+    }
 
-        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:1.5rem;">
-            <h3 style="margin:0 0 .5rem;color:#0f172a;">📁 File-based Routing</h3>
-            <p style="color:#64748b;font-size:.9rem;margin:0;">
-                <code>app/routes/users.php</code> → <code>/users</code><br>
-                Sem declaração. O arquivo é a rota.
-            </p>
+    .landing-page .hero__panel {
+        position: relative;
+        min-height: 34rem;
+        border: 1px solid var(--border-soft);
+        border-radius: 2rem;
+        background:
+            radial-gradient(circle at center, rgba(255, 166, 58, 0.18), transparent 42%),
+            linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 70%),
+            var(--surface-1);
+        box-shadow: var(--shadow-soft);
+        overflow: hidden;
+    }
+
+    :root[data-theme='light'] .landing-page .hero__panel {
+        background:
+            radial-gradient(circle at center, rgba(255, 166, 58, 0.2), transparent 44%),
+            linear-gradient(180deg, rgba(255, 255, 255, 0.6), transparent 70%),
+            var(--surface-2);
+    }
+
+    .landing-page .hero__panel::before,
+    .landing-page .hero__panel::after {
+        content: "";
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(12px);
+        opacity: .85;
+    }
+
+    .landing-page .hero__panel::before {
+        width: 24rem;
+        height: 24rem;
+        left: -7rem;
+        top: -8rem;
+        background: rgba(255, 166, 58, 0.1);
+    }
+
+    .landing-page .hero__panel::after {
+        width: 20rem;
+        height: 20rem;
+        right: -5rem;
+        bottom: -6rem;
+        background: rgba(255, 255, 255, 0.04);
+    }
+
+    .landing-page .hero__content {
+        position: relative;
+        z-index: 1;
+        max-width: 44rem;
+        margin: 0 auto;
+        padding: 5rem 1.5rem;
+        text-align: center;
+    }
+
+    .landing-page .hero__eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: .55rem;
+        padding: .65rem 1rem;
+        border-radius: 999px;
+        background: rgba(20, 24, 36, 0.7);
+        border: 1px solid rgba(255, 255, 255, 0.04);
+        color: var(--text-secondary);
+        font-size: .92rem;
+    }
+
+    :root[data-theme='light'] .landing-page .hero__eyebrow {
+        background: rgba(255, 255, 255, 0.78);
+        border-color: rgba(148, 163, 184, 0.16);
+    }
+
+    .landing-page .hero__dot,
+    .landing-page .dev-strip__dot {
+        width: .5rem;
+        height: .5rem;
+        border-radius: 999px;
+        background: var(--brand);
+        box-shadow: 0 0 0 .3rem rgba(255, 166, 58, 0.12);
+    }
+
+    .landing-page .hero h1,
+    .landing-page .section-head h2 {
+        margin: 0;
+        letter-spacing: -.05em;
+    }
+
+    .landing-page .hero h1 {
+        margin-top: 1.8rem;
+        font-size: clamp(3.5rem, 10vw, 6rem);
+        line-height: .95;
+    }
+
+    .landing-page .hero h1 span {
+        color: var(--brand);
+    }
+
+    .landing-page .hero p {
+        max-width: 34rem;
+        margin: 1.4rem auto 0;
+        color: var(--text-secondary);
+        font-size: clamp(1.05rem, 2.4vw, 1.75rem);
+        line-height: 1.55;
+    }
+
+    .landing-page .hero__actions {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+        margin-top: 2.25rem;
+    }
+
+    .landing-page .hero__cta {
+        min-width: 10.5rem;
+        padding-inline: 1.45rem;
+    }
+
+    .landing-page .command-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: .9rem;
+        min-height: 3.2rem;
+        padding: .95rem 1.15rem;
+        border-radius: 1rem;
+        background: rgba(20, 24, 36, 0.72);
+        border: 1px solid var(--border-soft);
+        color: var(--text-secondary);
+        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
+    }
+
+    :root[data-theme='light'] .landing-page .command-pill {
+        background: rgba(255, 255, 255, 0.8);
+    }
+
+    .landing-page .command-pill span {
+        color: var(--brand);
+        font-weight: 700;
+    }
+
+    .landing-page .command-pill code {
+        font-size: .95rem;
+        white-space: nowrap;
+    }
+
+    .landing-page .section {
+        padding: 2rem 0 0;
+    }
+
+    .landing-page .section-head {
+        max-width: 36rem;
+        margin: 0 auto;
+        text-align: center;
+    }
+
+    .landing-page .section-head h2 {
+        font-size: clamp(2rem, 5vw, 3.2rem);
+    }
+
+    .landing-page .section-head p {
+        margin: 1rem 0 0;
+        color: var(--text-secondary);
+        font-size: 1.05rem;
+        line-height: 1.7;
+    }
+
+    .landing-page .feature-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1.25rem;
+        margin-top: 3rem;
+    }
+
+    .landing-page .feature-card {
+        padding: 1.5rem;
+        border-radius: 1.35rem;
+        border: 1px solid var(--border-soft);
+        background: var(--surface-1);
+        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.16);
+    }
+
+    :root[data-theme='light'] .landing-page .feature-card {
+        background: rgba(255, 255, 255, 0.82);
+    }
+
+    .landing-page .feature-card__icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 2.65rem;
+        height: 2.65rem;
+        border-radius: .9rem;
+        background: var(--surface-3);
+        color: var(--brand);
+        font-size: 1.2rem;
+        margin-bottom: 1.25rem;
+    }
+
+    .landing-page .feature-card h3 {
+        margin: 0 0 .8rem;
+        font-size: 1.35rem;
+        letter-spacing: -.03em;
+    }
+
+    .landing-page .feature-card p {
+        margin: 0;
+        color: var(--text-secondary);
+        line-height: 1.8;
+    }
+
+    .landing-page .feature-card code {
+        color: var(--text-primary);
+        font-size: .92em;
+    }
+
+    .landing-page .capability-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 1rem;
+        margin-top: 2.5rem;
+    }
+
+    .landing-page .capability-card {
+        padding: 1.25rem 1.35rem;
+        border-radius: 1.1rem;
+        border: 1px solid var(--border-soft);
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent), var(--surface-1);
+        display: flex;
+        flex-direction: column;
+    }
+
+    :root[data-theme='light'] .landing-page .capability-card {
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.5), transparent), rgba(255, 255, 255, 0.84);
+    }
+
+    .landing-page .capability-card strong {
+        display: block;
+        margin-bottom: .55rem;
+        font-size: 1.05rem;
+        letter-spacing: -.02em;
+    }
+
+    .landing-page .capability-card p {
+        margin: 0 0 .9rem;
+        color: var(--text-secondary);
+        line-height: 1.65;
+        flex: 1;
+    }
+
+    .landing-page .capability-card code {
+        display: inline-block;
+        padding: .45rem .7rem;
+        border-radius: .75rem;
+        background: var(--surface-3);
+        color: var(--text-primary);
+        font-size: .88rem;
+        margin-top: auto;
+        align-self: flex-start;
+    }
+
+    .landing-page .showcase {
+        padding-top: 4.5rem;
+    }
+
+    .landing-page .code-window {
+        max-width: 46rem;
+        margin: 3rem auto 0;
+        border-radius: 1.15rem;
+        overflow: hidden;
+        border: 1px solid var(--border-soft);
+        background: var(--surface-code);
+        box-shadow: var(--shadow-soft);
+    }
+
+    .landing-page .code-window__bar {
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+        padding: .9rem 1.15rem;
+        border-bottom: 1px solid var(--border-soft);
+        color: var(--text-muted);
+        font-size: .9rem;
+    }
+
+    .landing-page .code-window__dots {
+        display: inline-flex;
+        align-items: center;
+        gap: .35rem;
+    }
+
+    .landing-page .code-window__dots span {
+        width: .7rem;
+        height: .7rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.14);
+    }
+
+    :root[data-theme='light'] .landing-page .code-window__dots span {
+        background: rgba(15, 23, 42, 0.14);
+    }
+
+    .landing-page .code-window__file {
+        margin-left: auto;
+        font-family: "JetBrains Mono", "Fira Code", monospace;
+    }
+
+    .landing-page .code-window pre {
+        margin: 0;
+        padding: 1.75rem;
+        color: #d7dfef;
+        font-size: .94rem;
+        line-height: 2;
+        overflow-x: auto;
+    }
+
+    :root[data-theme='light'] .landing-page .code-window pre {
+        color: #1f2937;
+    }
+
+    .landing-page .code-line-comment {
+        color: #74809b;
+    }
+
+    .landing-page .code-line-keyword {
+        color: var(--brand);
+        font-weight: 700;
+    }
+
+    .landing-page .dev-strip {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        flex-wrap: wrap;
+        max-width: 46rem;
+        margin: 2rem auto 0;
+        padding: 1.1rem 1.2rem;
+        border-radius: 1rem;
+        border: 1px solid var(--border-strong);
+        background: linear-gradient(90deg, rgba(255, 166, 58, 0.12), rgba(255, 166, 58, 0.04));
+        color: var(--text-secondary);
+    }
+
+    .landing-page .dev-strip__group {
+        display: inline-flex;
+        align-items: center;
+        gap: .8rem;
+        flex-wrap: wrap;
+    }
+
+    .landing-page .dev-strip strong {
+        color: var(--text-primary);
+    }
+
+    .landing-page .dev-strip a {
+        color: var(--brand);
+        font-weight: 700;
+    }
+
+    @media (max-width: 720px) {
+        .landing-page .landing-shell {
+            padding: 1.25rem 1rem 4rem;
+        }
+
+        .landing-page .hero__panel {
+            min-height: auto;
+        }
+
+        .landing-page .hero__content {
+            padding: 3.5rem 1.2rem;
+        }
+
+        .landing-page .hero__actions,
+        .landing-page .dev-strip {
+            align-items: stretch;
+        }
+
+        .landing-page .hero__cta,
+        .landing-page .command-pill,
+        .landing-page .dev-strip a {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .landing-page .command-pill code {
+            white-space: normal;
+            text-align: center;
+        }
+
+        .landing-page .feature-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .landing-page .code-window pre {
+            padding: 1.2rem;
+            font-size: .85rem;
+        }
+    }
+</style>
+
+<div class="landing-shell">
+    <section class="hero" id="hero">
+        <div class="hero__panel">
+            <div class="hero__content">
+                <div class="hero__eyebrow">
+                    <span class="hero__dot"></span>
+                    <span>Framework PHP minimalista e poderoso</span>
+                </div>
+
+                <h1><span>Spark</span>PHP</h1>
+
+                <p>
+                    Write what matters. Menos boilerplate, mais produtividade.
+                </p>
+
+                <div class="hero__actions">
+                    <a href="#start" class="site-button site-button--primary hero__cta">Começar agora</a>
+
+                    <a href="/?_spark_routes=1" class="command-pill" aria-label="Ver rotas do projeto">
+                        <span>$</span>
+                        <code>composer create-project spark/spark</code>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="features">
+        <div class="section-head">
+            <h2>Tudo que você precisa</h2>
+            <p>Construído para ser simples, rápido e sem configuração desnecessária.</p>
         </div>
 
-        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:1.5rem;">
-            <h3 style="margin:0 0 .5rem;color:#0f172a;">🎨 Spark Templates</h3>
-            <p style="color:#64748b;font-size:.9rem;margin:0;">
-                Extensão <code>.spark</code> com diretivas intuitivas.<br>
-                Layout aplicado automaticamente.
-            </p>
+        <div class="feature-grid">
+            <article class="feature-card">
+                <div class="feature-card__icon">📁</div>
+                <h3>File-based Routing</h3>
+                <p>
+                    <code>app/routes/users.php</code> → <code>/users</code>.
+                    Sem declaração. O arquivo é a rota.
+                </p>
+            </article>
+
+            <article class="feature-card">
+                <div class="feature-card__icon">✨</div>
+                <h3>Spark Templates</h3>
+                <p>
+                    Extensão <code>.spark</code> com diretivas intuitivas e layout aplicado automaticamente.
+                </p>
+            </article>
+
+            <article class="feature-card">
+                <div class="feature-card__icon">⚙️</div>
+                <h3>Zero Config</h3>
+                <p>
+                    Toda configuração em um único <code>.env</code>. Sem arquivos de config extras.
+                </p>
+            </article>
+
+            <article class="feature-card">
+                <div class="feature-card__icon">🚀</div>
+                <h3>Auto DI</h3>
+                <p>
+                    Type-hint na closure = injeção automática. Sem <code>bind()</code>, sem <code>register()</code>.
+                </p>
+            </article>
+
+            <article class="feature-card">
+                <div class="feature-card__icon">🐞</div>
+                <h3>Spark Inspector</h3>
+                <p>
+                    Debugger nativo com toolbar para requests, queries, logs, dumps e exceptions em tempo real.
+                </p>
+            </article>
+        </div>
+    </section>
+
+    <section class="section">
+        <div class="section-head">
+            <h2>Mais do CORE</h2>
+            <p>Além da DX da landing, o SparkPHP já cobre fluxo de desenvolvimento e operação.</p>
         </div>
 
-        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:1.5rem;">
-            <h3 style="margin:0 0 .5rem;color:#0f172a;">⚙️ Zero Config</h3>
-            <p style="color:#64748b;font-size:.9rem;margin:0;">
-                Toda configuração em um único <code>.env</code>.<br>
-                Sem arquivos de config extras.
-            </p>
+        <div class="capability-grid">
+            <article class="capability-card">
+                <strong>CLI útil de verdade</strong>
+                <p>Servidor local, generators, cache, rotas e utilitários do inspector no mesmo comando.</p>
+                <code>php spark routes:list</code>
+            </article>
+
+            <article class="capability-card">
+                <strong>Migrations sem atrito</strong>
+                <p>Prefixo numérico define ordem, com suporte nativo para migrate, rollback e fresh.</p>
+                <code>php spark migrate</code>
+            </article>
+
+            <article class="capability-card">
+                <strong>Cache e optimize</strong>
+                <p>Views, rotas, classes e schema podem ser pré-compilados para runtime sem scans.</p>
+                <code>php spark optimize</code>
+            </article>
+
+            <article class="capability-card">
+                <strong>Jobs e eventos</strong>
+                <p>Despache trabalho assíncrono e eventos do domínio com convenção, sem registro manual.</p>
+                <code>dispatch() / emit()</code>
+            </article>
+        </div>
+    </section>
+
+    <section class="section showcase" id="start">
+        <div class="section-head" id="showcase">
+            <h2>Elegância no <code>CÓDIGO</code></h2>
+            <p>Uma API expressiva que parece natural, tanto no dark quanto no light theme.</p>
         </div>
 
-        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:1.5rem;">
-            <h3 style="margin:0 0 .5rem;color:#0f172a;">💉 Auto DI</h3>
-            <p style="color:#64748b;font-size:.9rem;margin:0;">
-                Type-hint na closure = injeção automática.<br>
-                Sem <code>bind()</code>, sem <code>register()</code>.
-            </p>
+        <div class="code-window">
+            <div class="code-window__bar">
+                <div class="code-window__dots">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+
+                <span class="code-window__file">users.[id].php</span>
+            </div>
+
+            <pre><?php echo <<<'HTML'
+<span class="code-line-comment">// app/routes/api/users.[id].php</span>
+
+<span class="code-line-keyword">get</span>(fn(int $id) => User::find($id));
+
+<span class="code-line-keyword">put</span>(fn(int $id) => User::findOrFail($id)->update(input()));
+
+<span class="code-line-keyword">delete</span>(fn(int $id) => User::findOrFail($id)->delete());
+HTML; ?></pre>
         </div>
 
-    </div>
+        @dev
+        <div class="dev-strip">
+            <div class="dev-strip__group">
+                <span class="dev-strip__dot"></span>
+                <strong>Dev mode</strong>
+                <span>APP_ENV=dev</span>
+                <span>PHP {{ phpversion() }}</span>
+            </div>
 
-    <div style="margin-top:3rem;background:#1e293b;border-radius:8px;padding:1.5rem;">
-        <h3 style="color:#f59e0b;margin:0 0 1rem;">Exemplo de rota</h3>
-        <pre style="color:#e2e8f0;font-size:.9rem;margin:0;overflow:auto;"><?php echo htmlspecialchars(
-'// app/routes/api/users.[id].php
-
-get(fn(int $id) => User::find($id));
-
-put(fn(int $id) => User::findOrFail($id)->update(input()));
-
-delete(fn(int $id) => User::findOrFail($id)->delete());'
-); ?></pre>
-    </div>
-
-    @dev
-    <div style="margin-top:2rem;background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:1rem;font-size:.85rem;color:#92400e;">
-        <strong>🔧 Dev mode</strong> — APP_ENV=dev
-        &nbsp;|&nbsp; PHP {{ phpversion() }}
-        &nbsp;|&nbsp; <a href="/?_spark_routes=1" style="color:#92400e;">Ver rotas</a>
-    </div>
-    @enddev
-
+            <a href="/?_spark_routes=1">Ver rotas →</a>
+        </div>
+        @enddev
+    </section>
 </div>

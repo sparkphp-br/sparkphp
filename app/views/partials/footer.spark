@@ -1,3 +1,15 @@
-<footer style="background:#0f172a;color:#475569;padding:1.5rem 2rem;text-align:center;font-size:.85rem;margin-top:4rem;">
-    <p>{{ env('APP_NAME') }} &mdash; Powered by <strong style="color:#f59e0b;">SparkPHP</strong></p>
+<footer class="site-footer">
+    <div class="site-footer__inner">
+        <div class="site-footer__brand">
+            <span style="color:var(--brand);">⚡</span>
+            <span>{{ env('APP_NAME') }}</span>
+            <span style="color:var(--text-muted);">Write what matters.</span>
+        </div>
+
+        <nav class="site-footer__links" aria-label="Rodapé">
+            <a href="https://github.com/dbsdenis/sparkphp" target="_blank" rel="noreferrer">GitHub</a>
+            <a href="/#features">Docs</a>
+            <a href="/#showcase">Comunidade</a>
+        </nav>
+    </div>
 </footer>

@@ -4,6 +4,303 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ $title ?? env('APP_NAME') }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <script>
+        (() => {
+            const storageKey = 'spark-theme';
+            const savedTheme = localStorage.getItem(storageKey);
+            const preferredTheme = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+            document.documentElement.dataset.theme = savedTheme || preferredTheme;
+        })();
+    </script>
+    <style>
+        :root {
+            color-scheme: dark;
+            --page-bg: #090b11;
+            --page-bg-accent: rgba(255, 166, 58, 0.14);
+            --surface-1: rgba(16, 19, 28, 0.9);
+            --surface-2: #131722;
+            --surface-3: #1a2030;
+            --surface-code: #0f131d;
+            --text-primary: #f6f7fb;
+            --text-secondary: #9aa4be;
+            --text-muted: #6e7690;
+            --border-soft: rgba(151, 163, 184, 0.16);
+            --border-strong: rgba(255, 166, 58, 0.26);
+            --brand: #ff9f2f;
+            --brand-strong: #ffb347;
+            --button-text: #1a1207;
+            --shadow-soft: 0 22px 70px rgba(0, 0, 0, 0.34);
+        }
+
+        :root[data-theme='light'] {
+            color-scheme: light;
+            --page-bg: #f6efe5;
+            --page-bg-accent: rgba(255, 166, 58, 0.22);
+            --surface-1: rgba(255, 255, 255, 0.84);
+            --surface-2: #ffffff;
+            --surface-3: #eef2f7;
+            --surface-code: #fbfcfe;
+            --text-primary: #111827;
+            --text-secondary: #475569;
+            --text-muted: #64748b;
+            --border-soft: rgba(148, 163, 184, 0.3);
+            --border-strong: rgba(255, 166, 58, 0.34);
+            --brand: #f08a19;
+            --brand-strong: #ffab3d;
+            --button-text: #fffaf3;
+            --shadow-soft: 0 20px 60px rgba(148, 163, 184, 0.18);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background:
+                radial-gradient(circle at top center, var(--page-bg-accent), transparent 38%),
+                var(--page-bg);
+            color: var(--text-primary);
+            font-family: "Space Grotesk", "Segoe UI", sans-serif;
+            transition: background-color .25s ease, color .25s ease;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.015), transparent 28%),
+                radial-gradient(circle at 15% 20%, rgba(255, 255, 255, 0.03), transparent 22%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        main,
+        .site-footer {
+            position: relative;
+            z-index: 1;
+        }
+
+        a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        button,
+        input,
+        textarea,
+        select {
+            font: inherit;
+        }
+
+        code,
+        pre {
+            font-family: "JetBrains Mono", "Fira Code", monospace;
+        }
+
+        ::selection {
+            background: rgba(255, 166, 58, 0.28);
+        }
+
+        .site-header {
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            isolation: isolate;
+            backdrop-filter: blur(18px);
+            background: rgba(9, 11, 17, 0.82);
+            border-bottom: 1px solid var(--border-soft);
+        }
+
+        :root[data-theme='light'] .site-header {
+            background: rgba(246, 239, 229, 0.82);
+        }
+
+        .site-header__inner,
+        .site-footer__inner {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1rem 1.5rem;
+        }
+
+        .site-header__inner {
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+            flex-wrap: wrap;
+            position: relative;
+            z-index: 2;
+        }
+
+        .site-brand {
+            display: inline-flex;
+            align-items: center;
+            gap: .7rem;
+            font-weight: 700;
+            letter-spacing: -.03em;
+        }
+
+        .site-brand__mark {
+            color: var(--brand);
+            font-size: 1rem;
+        }
+
+        .site-brand__name {
+            color: var(--brand);
+            font-size: 1.35rem;
+        }
+
+        .site-nav {
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+            color: var(--text-secondary);
+        }
+
+        .site-nav a {
+            transition: color .2s ease;
+        }
+
+        .site-nav a:hover,
+        .site-nav .nav-active {
+            color: var(--text-primary);
+        }
+
+        .site-header__actions {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: .75rem;
+            flex-wrap: wrap;
+        }
+
+        .site-button,
+        .site-toggle,
+        .site-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: .5rem;
+            min-height: 2.75rem;
+            padding: .72rem 1rem;
+            border-radius: 999px;
+            border: 1px solid transparent;
+            transition: transform .2s ease, border-color .2s ease, background-color .2s ease, color .2s ease;
+        }
+
+        .site-button:hover,
+        .site-toggle:hover,
+        .site-link:hover {
+            transform: translateY(-1px);
+        }
+
+        .site-button--primary {
+            background: linear-gradient(135deg, var(--brand), var(--brand-strong));
+            color: var(--button-text);
+            font-weight: 700;
+            box-shadow: 0 14px 28px rgba(255, 166, 58, 0.18);
+        }
+
+        .site-link,
+        .site-toggle {
+            background: var(--surface-1);
+            border-color: var(--border-soft);
+            color: var(--text-secondary);
+        }
+
+        .site-toggle {
+            cursor: pointer;
+        }
+
+        .site-toggle__icon {
+            font-size: .95rem;
+        }
+
+        .site-user {
+            color: var(--text-secondary);
+            font-size: .95rem;
+        }
+
+        .site-footer {
+            margin-top: 4rem;
+            border-top: 1px solid var(--border-soft);
+            background: rgba(9, 11, 17, 0.7);
+        }
+
+        :root[data-theme='light'] .site-footer {
+            background: rgba(246, 239, 229, 0.76);
+        }
+
+        .site-footer__inner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            flex-wrap: wrap;
+            color: var(--text-secondary);
+        }
+
+        .site-footer__brand {
+            display: inline-flex;
+            align-items: center;
+            gap: .7rem;
+        }
+
+        .site-footer__links {
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+            flex-wrap: wrap;
+        }
+
+        .site-footer__links a:hover {
+            color: var(--text-primary);
+        }
+
+        @media (max-width: 900px) {
+            .site-header__inner {
+                gap: 1rem;
+            }
+
+            .site-nav {
+                order: 3;
+                width: 100%;
+                overflow-x: auto;
+                padding-bottom: .25rem;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .site-header__inner,
+            .site-footer__inner {
+                padding: 1rem;
+            }
+
+            .site-header__actions {
+                margin-left: 0;
+                width: 100%;
+            }
+
+            .site-button,
+            .site-toggle,
+            .site-link {
+                flex: 1 1 100%;
+            }
+
+            .site-user {
+                width: 100%;
+            }
+        }
+    </style>
     @stack('css')
 </head>
 <body class="{{ $bodyClass ?? '' }}">
@@ -16,6 +313,45 @@
 
     @partial('footer')
 
+    <script>
+        (() => {
+            const storageKey = 'spark-theme';
+
+            const themeLabel = (theme) => theme === 'light' ? 'Tema escuro' : 'Tema claro';
+            const themeIcon = (theme) => theme === 'light' ? '🌙' : '☀️';
+
+            const applyTheme = (theme) => {
+                document.documentElement.dataset.theme = theme;
+                document.querySelectorAll('[data-theme-toggle]').forEach((button) => {
+                    button.setAttribute('aria-pressed', String(theme === 'light'));
+
+                    const label = button.querySelector('[data-theme-label]');
+                    const icon = button.querySelector('[data-theme-icon]');
+
+                    if (label) {
+                        label.textContent = themeLabel(theme);
+                    }
+
+                    if (icon) {
+                        icon.textContent = themeIcon(theme);
+                    }
+                });
+            };
+
+            document.addEventListener('DOMContentLoaded', () => {
+                applyTheme(document.documentElement.dataset.theme || 'dark');
+
+                document.querySelectorAll('[data-theme-toggle]').forEach((button) => {
+                    button.addEventListener('click', () => {
+                        const currentTheme = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
+                        const nextTheme = currentTheme === 'light' ? 'dark' : 'light';
+                        localStorage.setItem(storageKey, nextTheme);
+                        applyTheme(nextTheme);
+                    });
+                });
+            });
+        })();
+    </script>
     @stack('js')
 </body>
 </html>

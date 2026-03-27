@@ -1,15 +1,35 @@
-<header style="background:#1e293b;color:#f1f5f9;padding:1rem 2rem;display:flex;align-items:center;gap:2rem;">
-    <a href="/" style="color:#f59e0b;font-weight:bold;font-size:1.2rem;text-decoration:none;">
-        ⚡ {{ env('APP_NAME') }}
-    </a>
-    <nav>
-        <a href="/" @active('/', 'nav-active') style="color:#94a3b8;text-decoration:none;margin-right:1rem;">Home</a>
-    </nav>
-    <div style="margin-left:auto;">
-        @auth
-            <span style="color:#94a3b8;font-size:.9rem;">Olá, {{ auth()->name ?? 'Usuário' }}</span>
-        @else
-            <a href="/login" style="color:#f59e0b;text-decoration:none;">Entrar</a>
-        @endauth
+<header class="site-header">
+    <div class="site-header__inner">
+        <a href="/" class="site-brand" aria-label="{{ env('APP_NAME') }}">
+            <span class="site-brand__mark">⚡</span>
+            <span class="site-brand__name">{{ env('APP_NAME') }}</span>
+        </a>
+
+        <nav class="site-nav" aria-label="Principal">
+            <a href="/" @active('/', 'nav-active')>Home</a>
+            <a href="/#features">Docs</a>
+            <a href="/#showcase">Exemplos</a>
+        </nav>
+
+        <div class="site-header__actions">
+            <button
+                type="button"
+                class="site-toggle"
+                data-theme-toggle
+                aria-label="Alternar tema"
+                aria-pressed="false"
+            >
+                <span class="site-toggle__icon" data-theme-icon>☀️</span>
+                <span data-theme-label>Tema claro</span>
+            </button>
+
+            @auth
+                <span class="site-user">Olá, {{ auth()->name ?? 'Usuário' }}</span>
+                <a href="/?_spark_routes=1" class="site-button site-button--primary">Explorar</a>
+            @else
+                <a href="/login" class="site-link">Entrar</a>
+                <a href="/#start" class="site-button site-button--primary">Começar</a>
+            @endauth
+        </div>
     </div>
 </header>
