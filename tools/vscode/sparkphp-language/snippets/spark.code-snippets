@@ -1,0 +1,212 @@
+{
+  "Spark Layout": {
+    "prefix": "spark-layout",
+    "body": [
+      "@layout('${1:main}')",
+      "@title('${2:Pagina}')",
+      "",
+      "$0"
+    ],
+    "description": "Spark view with layout and title"
+  },
+  "Spark Partial": {
+    "prefix": "spark-partial",
+    "body": [
+      "@partial('${1:user/card}'${2:, $data})"
+    ],
+    "description": "Insert a Spark partial"
+  },
+  "Spark If": {
+    "prefix": "spark-if",
+    "body": [
+      "@if(${1:$condition})",
+      "    $0",
+      "@endif"
+    ],
+    "description": "Spark conditional block"
+  },
+  "Spark Foreach": {
+    "prefix": "spark-foreach",
+    "body": [
+      "@foreach(${1:$items} as ${2:$item})",
+      "    $0",
+      "@empty",
+      "    ",
+      "@endforeach"
+    ],
+    "description": "Spark foreach with empty block"
+  },
+  "Spark Once": {
+    "prefix": "spark-once",
+    "body": [
+      "@once",
+      "    $0",
+      "@endonce"
+    ],
+    "description": "Spark once block"
+  },
+  "Spark Stack": {
+    "prefix": "spark-stack",
+    "body": [
+      "@stack('${1:css}')"
+    ],
+    "description": "Render a Spark asset stack"
+  },
+  "Spark Form": {
+    "prefix": "spark-form",
+    "body": [
+      "@form('${1:/endpoint}', '${2:POST}')",
+      "    $0",
+      "@endform"
+    ],
+    "description": "Spark form block"
+  },
+  "Spark Input": {
+    "prefix": "spark-input",
+    "body": [
+      "@input('${1:name}', label: '${2:Nome}'${3:, required: true})"
+    ],
+    "description": "Spark form input"
+  },
+  "Spark Select": {
+    "prefix": "spark-select",
+    "body": [
+      "@select('${1:status}', label: '${2:Status}', options: ${3:$options})"
+    ],
+    "description": "Spark select field"
+  },
+  "Spark Submit": {
+    "prefix": "spark-submit",
+    "body": [
+      "@submit('${1:Salvar}')"
+    ],
+    "description": "Spark submit button"
+  },
+  "Spark Component": {
+    "prefix": "spark-component",
+    "body": [
+      "@component('${1:card}')",
+      "    $0",
+      "@endcomponent"
+    ],
+    "description": "Spark component block"
+  },
+  "Spark Auth": {
+    "prefix": "spark-auth",
+    "body": [
+      "@auth",
+      "    $0",
+      "@else",
+      "    ",
+      "@endauth"
+    ],
+    "description": "Spark auth conditional"
+  },
+  "Spark Role": {
+    "prefix": "spark-role",
+    "body": [
+      "@role('${1:admin}')",
+      "    $0",
+      "@endrole"
+    ],
+    "description": "Spark role conditional"
+  },
+  "Spark Can": {
+    "prefix": "spark-can",
+    "body": [
+      "@can('${1:update}', ${2:$resource})",
+      "    $0",
+      "@endcan"
+    ],
+    "description": "Spark permission conditional"
+  },
+  "Spark Cache": {
+    "prefix": "spark-cache",
+    "body": [
+      "@cache(${1:'fragment-key'}, ${2:3600})",
+      "    $0",
+      "@endcache"
+    ],
+    "description": "Spark fragment cache block"
+  },
+  "Spark Lazy": {
+    "prefix": "spark-lazy",
+    "body": [
+      "@lazy('${1:/endpoint}')",
+      "    $0",
+      "@endlazy"
+    ],
+    "description": "Spark lazy-loaded block"
+  },
+  "Spark Echo": {
+    "prefix": "spark-echo",
+    "body": [
+      "{{ ${1:$value} }}"
+    ],
+    "description": "Escaped Spark echo"
+  },
+  "Spark Raw Echo": {
+    "prefix": "spark-raw",
+    "body": [
+      "{!! ${1:$html} !!}"
+    ],
+    "description": "Raw Spark echo"
+  },
+  "Spark Slot": {
+    "prefix": "spark-slot",
+    "body": [
+      "@slot('${1:header}')",
+      "    $0",
+      "@endslot"
+    ],
+    "description": "Spark component slot"
+  },
+  "Spark Has Slot": {
+    "prefix": "spark-hasslot",
+    "body": [
+      "@hasslot('${1:header}')",
+      "    $0",
+      "@endhasslot"
+    ],
+    "description": "Spark has-slot conditional"
+  },
+  "Spark Meta": {
+    "prefix": "spark-meta",
+    "body": [
+      "@meta(",
+      "    '${1:description}': ${2:$value}",
+      ")"
+    ],
+    "description": "Spark meta helper"
+  },
+  "Spark Json": {
+    "prefix": "spark-json",
+    "body": [
+      "@json(${1:$data})"
+    ],
+    "description": "Spark JSON helper"
+  },
+  "Spark Img": {
+    "prefix": "spark-img",
+    "body": [
+      "@img('${1:photo.jpg}', alt: '${2:Imagem}')"
+    ],
+    "description": "Spark image helper"
+  },
+  "Spark Icon": {
+    "prefix": "spark-icon",
+    "body": [
+      "@icon('${1:search}')"
+    ],
+    "description": "Spark icon helper"
+  },
+  "Spark PHP": {
+    "prefix": "spark-php",
+    "body": [
+      "@php",
+      "    $0",
+      "@endphp"
+    ],
+    "description": "Inline PHP block in Spark"
+  }
+}

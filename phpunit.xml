@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit bootstrap="tests/bootstrap.php" colors="true" cacheDirectory="storage/cache/phpunit">
+  <testsuites>
+    <testsuite name="SparkPHP Core">
+      <directory>tests/Feature</directory>
+    </testsuite>
+  </testsuites>
+</phpunit>

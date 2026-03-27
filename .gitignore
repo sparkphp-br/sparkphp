@@ -1,0 +1,15 @@
+.env
+vendor/
+storage/cache/env.php
+storage/cache/classes.php
+storage/cache/routes.php
+storage/cache/phpunit/
+storage/cache/views/
+storage/cache/app/
+storage/benchmarks/
+storage/inspector/
+storage/logs/
+storage/sessions/
+storage/uploads/
+*.DS_Store
+Thumbs.db

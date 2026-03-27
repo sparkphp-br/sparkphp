@@ -1,0 +1,15 @@
+<header style="background:#1e293b;color:#f1f5f9;padding:1rem 2rem;display:flex;align-items:center;gap:2rem;">
+    <a href="/" style="color:#f59e0b;font-weight:bold;font-size:1.2rem;text-decoration:none;">
+        ⚡ {{ env('APP_NAME') }}
+    </a>
+    <nav>
+        <a href="/" @active('/', 'nav-active') style="color:#94a3b8;text-decoration:none;margin-right:1rem;">Home</a>
+    </nav>
+    <div style="margin-left:auto;">
+        @auth
+            <span style="color:#94a3b8;font-size:.9rem;">Olá, {{ auth()->name ?? 'Usuário' }}</span>
+        @else
+            <a href="/login" style="color:#f59e0b;text-decoration:none;">Entrar</a>
+        @endauth
+    </div>
+</header>

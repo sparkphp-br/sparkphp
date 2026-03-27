@@ -1,0 +1,72 @@
+{
+  "name": "sparkphp-language",
+  "displayName": "SparkPHP Language",
+  "description": "Syntax highlighting, snippets and editor support for SparkPHP .spark templates.",
+  "version": "0.4.0",
+  "publisher": "sparkphp",
+  "license": "MIT",
+  "main": "./extension.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sparkphp/sparkphp.git"
+  },
+  "homepage": "https://github.com/sparkphp/sparkphp",
+  "bugs": {
+    "url": "https://github.com/sparkphp/sparkphp/issues"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "activationEvents": [
+    "onLanguage:spark"
+  ],
+  "categories": [
+    "Programming Languages",
+    "Snippets"
+  ],
+  "keywords": [
+    "sparkphp",
+    "spark",
+    "template",
+    "php",
+    "html"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "spark",
+        "aliases": [
+          "Spark",
+          "spark"
+        ],
+        "extensions": [
+          ".spark"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "spark",
+        "scopeName": "text.html.spark",
+        "path": "./syntaxes/spark.tmLanguage.json",
+        "embeddedLanguages": {
+          "meta.embedded.block.php": "php",
+          "source.php": "php"
+        }
+      }
+    ],
+    "snippets": [
+      {
+        "language": "spark",
+        "path": "./snippets/spark.code-snippets"
+      }
+    ],
+    "commands": [
+      {
+        "command": "sparkphpLanguage.showReference",
+        "title": "SparkPHP: Show Spark Reference"
+      }
+    ]
+  }
+}

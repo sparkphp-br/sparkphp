@@ -1,0 +1,88 @@
+{
+  "comments": {
+    "blockComment": [
+      "<!--",
+      "-->"
+    ]
+  },
+  "brackets": [
+    [
+      "{",
+      "}"
+    ],
+    [
+      "[",
+      "]"
+    ],
+    [
+      "(",
+      ")"
+    ]
+  ],
+  "autoClosingPairs": [
+    {
+      "open": "{",
+      "close": "}"
+    },
+    {
+      "open": "[",
+      "close": "]"
+    },
+    {
+      "open": "(",
+      "close": ")"
+    },
+    {
+      "open": "\"",
+      "close": "\""
+    },
+    {
+      "open": "'",
+      "close": "'"
+    },
+    {
+      "open": "{{",
+      "close": "}}"
+    },
+    {
+      "open": "{!!",
+      "close": "!!}"
+    }
+  ],
+  "surroundingPairs": [
+    [
+      "{",
+      "}"
+    ],
+    [
+      "[",
+      "]"
+    ],
+    [
+      "(",
+      ")"
+    ],
+    [
+      "\"",
+      "\""
+    ],
+    [
+      "'",
+      "'"
+    ],
+    [
+      "{{",
+      "}}"
+    ],
+    [
+      "{!!",
+      "!!}"
+    ]
+  ],
+  "folding": {
+    "markers": {
+      "start": "^\\s*@(?:if|auth|role|can|dev|prod|foreach|for|while|repeat|form|group|component|slot|hasslot|cache|lazy|once)\\b",
+      "end": "^\\s*@end(?:if|auth|role|can|dev|prod|foreach|for|while|repeat|form|group|component|slot|hasslot|cache|lazy|once)\\b"
+    }
+  }
+}

@@ -1,0 +1,716 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+define('SPARK_BASE', __DIR__);
+
+require_once __DIR__ . '/core/Bootstrap.php';
+
+// Minimal boot (no HTTP cycle)
+$app = new Bootstrap(SPARK_BASE);
+$app->boot();
+
+// ─── CLI dispatcher ──────────────────────────────────────────────────────────
+
+$args    = array_slice($argv, 1);
+$command = $args[0] ?? 'help';
+$rest    = array_slice($args, 1);
+
+match (true) {
+    // ── Project bootstrap ─────────────────────────────────────────────────────
+    $command === 'init' => sparkInit($rest),
+
+    // ── Server ────────────────────────────────────────────────────────────────
+    $command === 'serve' => sparkServe($rest),
+
+    // ── Benchmarks ────────────────────────────────────────────────────────────
+    $command === 'benchmark' || $command === 'bench' => sparkBenchmark($rest),
+
+    // ── Migrations ────────────────────────────────────────────────────────────
+    $command === 'migrate'               => sparkMigrate(),
+    $command === 'migrate:rollback'      => sparkMigrateRollback((int)($rest[0] ?? 1)),
+    $command === 'migrate:fresh'         => sparkMigrateFresh(),
+    $command === 'migrate:status'        => sparkMigrateStatus(),
+
+    // ── Seeds ─────────────────────────────────────────────────────────────────
+    $command === 'seed'  => sparkSeed($rest[0] ?? null),
+
+    // ── Queue ─────────────────────────────────────────────────────────────────
+    $command === 'queue:work'   => sparkQueueWork($rest),
+    $command === 'queue:clear'  => sparkQueueClear($rest[0] ?? 'default'),
+    $command === 'queue:list'   => sparkQueueList(),
+
+    // ── Cache ─────────────────────────────────────────────────────────────────
+    $command === 'cache:clear'     => sparkCacheClear(),
+    $command === 'views:cache'     => sparkViewsCache(),
+    $command === 'views:clear'     => sparkViewsClear(),
+    $command === 'routes:cache'    => sparkRoutesCache(),
+    $command === 'routes:clear'    => sparkRoutesClear(),
+    $command === 'routes:list'     => sparkRoutesList(),
+    $command === 'inspector:clear' => sparkInspectorClear(),
+    $command === 'inspector:status' => sparkInspectorStatus(),
+    $command === 'optimize'        => sparkOptimize(),
+
+    // ── Make ──────────────────────────────────────────────────────────────────
+    str_starts_with($command, 'make:') => sparkMake($command, $rest),
+
+    // ── Help ──────────────────────────────────────────────────────────────────
+    default => sparkHelp(),
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Commands
+// ─────────────────────────────────────────────────────────────────────────────
+
+function sparkServe(array $args): void
+{
+    $port = 8000;
+    foreach ($args as $arg) {
+        if (str_starts_with($arg, '--port=')) {
+            $port = (int) substr($arg, 7);
+        }
+    }
+    $host = '0.0.0.0';
+    echo "\n";
+    out(color('  ⚡ SparkPHP', 'cyan') . color(" server running at ", 'dim') . color("http://localhost:{$port}", 'green'));
+    out(color("     Press Ctrl+C to stop.", 'dim'));
+    echo "\n";
+    passthru("php -S {$host}:{$port} " . SPARK_BASE . '/public/index.php');
+}
+
+function sparkBenchmark(array $args): void
+{
+    require_once SPARK_BASE . '/core/BenchmarkRunner.php';
+
+    $iterations = 200;
+    $warmup = 15;
+    $json = in_array('--json', $args, true);
+    $save = SPARK_BASE . '/storage/benchmarks/latest.json';
+    $noSave = in_array('--no-save', $args, true);
+
+    foreach ($args as $arg) {
+        if (str_starts_with($arg, '--iterations=')) {
+            $iterations = max(1, (int) substr($arg, 13));
+        }
+
+        if (str_starts_with($arg, '--warmup=')) {
+            $warmup = max(0, (int) substr($arg, 9));
+        }
+
+        if (str_starts_with($arg, '--save=')) {
+            $save = SPARK_BASE . '/' . ltrim(substr($arg, 7), '/');
+        }
+    }
+
+    $runner = new BenchmarkRunner(SPARK_BASE);
+    $report = $runner->run($iterations, $warmup);
+
+    if (!$noSave) {
+        $savedPath = $runner->save($report, $save);
+        $report['saved_to'] = $savedPath;
+    }
+
+    if ($json) {
+        echo json_encode($report, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . PHP_EOL;
+        return;
+    }
+
+    sparkRenderBenchmarkReport($report, !$noSave);
+}
+
+function sparkInit(array $args): void
+{
+    require_once SPARK_BASE . '/core/ProjectScaffolder.php';
+
+    $force = in_array('--force', $args, true);
+    $quiet = in_array('--quiet', $args, true);
+
+    $scaffolder = new ProjectScaffolder(SPARK_BASE);
+    $result = $scaffolder->initialize($force);
+
+    if ($quiet) {
+        return;
+    }
+
+    echo "\n";
+    out(color('  ⚡ SparkPHP', 'cyan') . color(' project bootstrap', 'dim'));
+    foreach ($result['messages'] as $message) {
+        out('  ' . color('• ', 'dim') . $message);
+    }
+    echo "\n";
+
+    success('Project is ready.');
+}
+
+// ─── Migration state ─────────────────────────────────────────────────────────
+// Tracked in storage/migrations.json as:
+// [{"batch": 1, "file": "001_create_users.php", "ran_at": "..."}]
+//
+// Migration files define up() and down() functions via capture vars:
+//   up(fn() => db()->statement("CREATE TABLE ..."));
+//   down(fn() => db()->statement("DROP TABLE ..."));
+
+function sparkMigrationStatePath(): string
+{
+    return SPARK_BASE . '/storage/migrations.json';
+}
+
+function sparkMigrationState(): array
+{
+    $file = sparkMigrationStatePath();
+    return file_exists($file) ? (json_decode((string)file_get_contents($file), true) ?? []) : [];
+}
+
+function sparkMigrationSave(array $state): void
+{
+    $dir = dirname(sparkMigrationStatePath());
+    if (!is_dir($dir)) mkdir($dir, 0755, true);
+    file_put_contents(sparkMigrationStatePath(), json_encode($state, JSON_PRETTY_PRINT));
+}
+
+function sparkRunMigrationFile(string $file, string $direction = 'up'): void
+{
+    // Provide up()/down() capture functions
+    $captured = [];
+    $up   = function (callable $fn) use (&$captured) { $captured['up']   = $fn; };
+    $down = function (callable $fn) use (&$captured) { $captured['down'] = $fn; };
+
+    (static function () use ($file, $up, $down) { require $file; })();
+
+    if (!isset($captured[$direction])) {
+        // Legacy migration: just required the file (runs on include). Already done above.
+        return;
+    }
+    ($captured[$direction])();
+}
+
+function sparkMigrate(): void
+{
+    $dir = SPARK_BASE . '/database/migrations';
+    if (!is_dir($dir)) {
+        out(color('  No migrations directory found.', 'yellow'));
+        return;
+    }
+
+    $files = glob($dir . '/*.php');
+    sort($files);
+
+    $state   = sparkMigrationState();
+    $ran     = array_column($state, 'file');
+    $batch   = $state ? (max(array_column($state, 'batch')) + 1) : 1;
+    $pending = array_filter($files, fn($f) => !in_array(basename($f), $ran, true));
+
+    if (empty($pending)) {
+        out(color('  Nothing to migrate.', 'dim'));
+        return;
+    }
+
+    require_once SPARK_BASE . '/core/Database.php';
+
+    foreach ($pending as $file) {
+        $name = basename($file);
+        out('  ' . color('Migrating ', 'dim') . color($name, 'cyan'));
+        sparkRunMigrationFile($file, 'up');
+        $state[] = ['batch' => $batch, 'file' => $name, 'ran_at' => date('Y-m-d H:i:s')];
+    }
+
+    sparkMigrationSave($state);
+    success("Batch {$batch} — " . count($pending) . " migration(s) complete.");
+}
+
+function sparkMigrateRollback(int $batches = 1): void
+{
+    $dir   = SPARK_BASE . '/database/migrations';
+    $state = sparkMigrationState();
+
+    if (empty($state)) {
+        out(color('  Nothing to rollback.', 'dim'));
+        return;
+    }
+
+    require_once SPARK_BASE . '/core/Database.php';
+
+    $maxBatch  = max(array_column($state, 'batch'));
+    $minBatch  = max(1, $maxBatch - $batches + 1);
+    $toRollback = array_filter($state, fn($r) => $r['batch'] >= $minBatch);
+    $toRollback = array_reverse(array_values($toRollback));
+
+    foreach ($toRollback as $record) {
+        $file = $dir . '/' . $record['file'];
+        out('  ' . color('Rolling back ', 'dim') . color($record['file'], 'yellow'));
+        if (file_exists($file)) {
+            sparkRunMigrationFile($file, 'down');
+        } else {
+            out('  ' . color('Warning: file not found, skipping.', 'red'));
+        }
+    }
+
+    $remaining = array_filter($state, fn($r) => $r['batch'] < $minBatch);
+    sparkMigrationSave(array_values($remaining));
+    success('Rolled back ' . count($toRollback) . ' migration(s).');
+}
+
+function sparkMigrateFresh(): void
+{
+    out(color('  Rolling back all migrations...', 'yellow'));
+    $state = sparkMigrationState();
+    if (!empty($state)) {
+        $batches = max(array_column($state, 'batch'));
+        sparkMigrateRollback($batches);
+    }
+    out(color('  Re-running all migrations...', 'cyan'));
+    sparkMigrate();
+}
+
+function sparkMigrateStatus(): void
+{
+    $state = sparkMigrationState();
+    $dir   = SPARK_BASE . '/database/migrations';
+    $files = is_dir($dir) ? glob($dir . '/*.php') : [];
+    sort($files);
+    $ran   = array_column($state, null, 'file');
+
+    echo "\n";
+    out('  ' . color(str_pad('Status', 14), 'yellow') . color(str_pad('Batch', 8), 'yellow') . color(str_pad('File', 50), 'yellow') . color('Ran At', 'yellow'));
+    out('  ' . color(str_repeat('─', 88), 'dim'));
+
+    foreach ($files as $file) {
+        $name   = basename($file);
+        $record = $ran[$name] ?? null;
+        $status = $record ? color(str_pad('Ran', 14), 'green') : color(str_pad('Pending', 14), 'yellow');
+        $batch  = str_pad((string)($record['batch'] ?? '—'), 8);
+        $ranAt  = $record['ran_at'] ?? '—';
+        out('  ' . $status . color($batch, 'dim') . str_pad($name, 50) . color($ranAt, 'dim'));
+    }
+    echo "\n";
+}
+
+function sparkSeed(?string $seeder = null): void
+{
+    $dir = SPARK_BASE . '/database/seeds';
+    if ($seeder) {
+        $file = $dir . "/{$seeder}.php";
+        if (!file_exists($file)) {
+            error("Seeder not found: {$seeder}");
+            return;
+        }
+        require $file;
+        success("{$seeder} executed.");
+        return;
+    }
+
+    foreach (glob($dir . '/*.php') as $file) {
+        out('  ' . color('Seeding ', 'dim') . color(basename($file), 'cyan'));
+        require $file;
+    }
+    success('All seeders executed.');
+}
+
+function sparkCacheClear(): void
+{
+    $dirs = [
+        SPARK_BASE . '/storage/cache/env.php',
+        SPARK_BASE . '/storage/cache/classes.php',
+        SPARK_BASE . '/storage/cache/routes.php',
+    ];
+    foreach ($dirs as $path) {
+        if (file_exists($path)) {
+            unlink($path);
+            out('  ' . color('Cleared ', 'dim') . color(basename($path), 'cyan'));
+        }
+    }
+
+    // Clear app cache files
+    foreach (glob(SPARK_BASE . '/storage/cache/app/*.cache') as $f) {
+        unlink($f);
+    }
+    success('Cache cleared.');
+}
+
+function sparkViewsCache(): void
+{
+    require_once SPARK_BASE . '/core/View.php';
+    $view    = new View(SPARK_BASE);
+    $viewDir = SPARK_BASE . '/app/views';
+    $count   = 0;
+
+    foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($viewDir, FilesystemIterator::SKIP_DOTS)) as $file) {
+        if ($file->getExtension() === 'spark') {
+            $rel = str_replace([$viewDir . '/', $viewDir . '\\', '.spark'], ['', '', ''], $file->getPathname());
+            try {
+                $view->render($rel, []);
+                $count++;
+            } catch (\Throwable $e) {
+                out('  ' . color("Warning [{$rel}]: " . $e->getMessage(), 'yellow'));
+            }
+        }
+    }
+    success("{$count} views cached.");
+}
+
+function sparkViewsClear(): void
+{
+    foreach (glob(SPARK_BASE . '/storage/cache/views/*.php') as $f) {
+        unlink($f);
+    }
+    success('View cache cleared.');
+}
+
+function sparkRoutesCache(): void
+{
+    require_once SPARK_BASE . '/core/Router.php';
+    $router = new Router(SPARK_BASE);
+    $routes = $router->buildRoutes();
+    success(count($routes) . ' routes cached.');
+}
+
+function sparkRoutesClear(): void
+{
+    $file = SPARK_BASE . '/storage/cache/routes.php';
+    if (file_exists($file)) {
+        unlink($file);
+    }
+    success('Route cache cleared.');
+}
+
+function sparkRoutesList(): void
+{
+    require_once SPARK_BASE . '/core/Router.php';
+    $router = new Router(SPARK_BASE);
+    $routes = $router->list();
+
+    echo "\n";
+    out('  ' . color(str_pad('URL', 40), 'yellow') . color(str_pad('Middlewares', 30), 'yellow') . color('File', 'yellow'));
+    out('  ' . color(str_repeat('─', 88), 'dim'));
+
+    foreach ($routes as $route) {
+        $mwRaw = implode(', ', $route['middlewares']);
+        $mw    = $mwRaw ?: '—';
+        $file  = str_replace(SPARK_BASE . '/app/routes/', '', $route['file']);
+        $mwPad = str_pad($mw, 30);
+        $mwStr = $mwRaw ? color($mwPad, 'cyan') : color($mwPad, 'dim');
+        out('  ' . color(str_pad($route['url'], 40), 'green') . $mwStr . color($file, 'dim'));
+    }
+    echo "\n";
+}
+
+function sparkOptimize(): void
+{
+    sparkCacheClear();
+    sparkRoutesCache();
+    sparkViewsCache();
+    success('Application optimized for production.');
+}
+
+function sparkInspectorClear(): void
+{
+    require_once SPARK_BASE . '/core/SparkInspectorStorage.php';
+    $storage = new SparkInspectorStorage(SPARK_BASE);
+    $cleared = $storage->clear();
+    success("Inspector history cleared ({$cleared} request file(s)).");
+}
+
+function sparkInspectorStatus(): void
+{
+    require_once SPARK_BASE . '/core/SparkInspectorStorage.php';
+    require_once SPARK_BASE . '/core/SparkInspector.php';
+
+    SparkInspector::boot(SPARK_BASE);
+    $inspector = SparkInspector::getInstance();
+    $status = $inspector?->status() ?? ['enabled' => false, 'prefix' => '/_spark', 'storage' => []];
+
+    echo "\n";
+    out('  ' . color('Enabled: ', 'yellow') . color($status['enabled'] ? 'yes' : 'no', $status['enabled'] ? 'green' : 'red'));
+    out('  ' . color('Prefix:  ', 'yellow') . color($status['prefix'], 'cyan'));
+    out('  ' . color('Dir:     ', 'yellow') . color($status['storage']['directory'] ?? '-', 'dim'));
+    out('  ' . color('History: ', 'yellow') . color((string) ($status['storage']['stored_requests'] ?? 0), 'white')
+        . color('/' . (string) ($status['storage']['history_limit'] ?? 0), 'dim'));
+    echo "\n";
+}
+
+function sparkMake(string $command, array $args): void
+{
+    $name = $args[0] ?? null;
+    if (!$name) {
+        out('  ' . color('Usage: ', 'dim') . color("php spark {$command} <Name>", 'white'));
+        return;
+    }
+
+    $type = substr($command, 5); // strip "make:"
+
+    $templates = [
+        'model'     => [
+            'path'    => "app/models/{$name}.php",
+            'content' => "<?php\n\nclass {$name} extends Model\n{\n    //\n}\n",
+        ],
+        'middleware' => [
+            'path'    => "app/middleware/{$name}.php",
+            'content' => "<?php\n\n// Middleware: {$name}\n// Return a Response to block, or nothing to continue.\n",
+        ],
+        'migration' => [
+            'path'    => "database/migrations/" . sparkNextMigrationPrefix() . "_{$name}.php",
+            'content' => "<?php\n\n// Migration: {$name}\n\nup(function () {\n    db()->statement(\"\n        CREATE TABLE IF NOT EXISTS `table_name` (\n            `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,\n            `created_at` DATETIME,\n            `updated_at` DATETIME\n        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4\n    \");\n});\n\ndown(function () {\n    db()->statement('DROP TABLE IF EXISTS `table_name`');\n});\n",
+        ],
+        'service'   => [
+            'path'    => "app/services/{$name}.php",
+            'content' => "<?php\n\nclass {$name}\n{\n    public function __construct()\n    {\n        //\n    }\n}\n",
+        ],
+        'job'       => [
+            'path'    => "app/jobs/{$name}.php",
+            'content' => "<?php\n\nclass {$name}\n{\n    public function __construct(private mixed \$data = null) {}\n\n    public function handle(): void\n    {\n        // Process the job\n    }\n}\n",
+        ],
+        'event'     => [
+            'path'    => "app/events/{$name}.php",
+            'content' => "<?php\n\n// Event: {$name}\n// \$data contains the dispatched payload.\n",
+        ],
+    ];
+
+    if (!isset($templates[$type])) {
+        error("Unknown make type: {$type}");
+        return;
+    }
+
+    $tpl  = $templates[$type];
+    $file = SPARK_BASE . '/' . $tpl['path'];
+    $dir  = dirname($file);
+
+    if (!is_dir($dir)) {
+        mkdir($dir, 0755, true);
+    }
+
+    if (file_exists($file)) {
+        out('  ' . color('Already exists: ', 'yellow') . color($tpl['path'], 'dim'));
+        return;
+    }
+
+    file_put_contents($file, $tpl['content']);
+    success('Created ' . color($tpl['path'], 'cyan'));
+}
+
+// ─── Queue commands ───────────────────────────────────────────────────────────
+
+function sparkQueueWork(array $args): void
+{
+    require_once SPARK_BASE . '/core/Queue.php';
+
+    $queue   = 'default';
+    $sleep   = 3;
+    $maxJobs = 0; // 0 = unlimited
+
+    foreach ($args as $arg) {
+        if (str_starts_with($arg, '--queue='))    $queue   = substr($arg, 8);
+        if (str_starts_with($arg, '--sleep='))    $sleep   = (int)substr($arg, 8);
+        if (str_starts_with($arg, '--max-jobs=')) $maxJobs = (int)substr($arg, 10);
+    }
+
+    $q       = new Queue(SPARK_BASE);
+    $count   = 0;
+    echo "\n";
+    out(color('  ⚡ Queue worker started', 'cyan') . color(" [{$queue}]", 'green') . color(' — Ctrl+C to stop.', 'dim'));
+    echo "\n";
+
+    while (true) {
+        $processed = $q->processNext($queue);
+
+        if ($processed) {
+            $count++;
+            out('  ' . color(date('H:i:s'), 'dim') . ' ' . color("Job #{$count} processed", 'green'));
+            if ($maxJobs > 0 && $count >= $maxJobs) {
+                success("Max jobs reached ({$maxJobs}). Exiting.");
+                break;
+            }
+        } else {
+            sleep($sleep);
+        }
+    }
+}
+
+function sparkQueueClear(string $queue): void
+{
+    require_once SPARK_BASE . '/core/Queue.php';
+    (new Queue(SPARK_BASE))->clear($queue);
+    success("Queue [{$queue}] cleared.");
+}
+
+function sparkQueueList(): void
+{
+    require_once SPARK_BASE . '/core/Queue.php';
+    $q = new Queue(SPARK_BASE);
+
+    echo "\n";
+    out('  ' . color(str_pad('Queue', 24), 'yellow') . color('Jobs', 'yellow'));
+    out('  ' . color(str_repeat('─', 30), 'dim'));
+    foreach ($q->queues() as $name) {
+        $size = $q->size($name);
+        $sizeColor = $size > 0 ? 'cyan' : 'dim';
+        out('  ' . color(str_pad($name, 24), 'green') . color((string)$size, $sizeColor));
+    }
+    echo "\n";
+}
+
+function sparkNextMigrationPrefix(): string
+{
+    $dir   = SPARK_BASE . '/database/migrations';
+    $files = is_dir($dir) ? glob($dir . '/*.php') : [];
+    return str_pad((string)(count($files) + 1), 3, '0', STR_PAD_LEFT);
+}
+
+function sparkHelp(): void
+{
+    $v = '0.1.0';
+
+    $logo = <<<'ASCII'
+
+        ███████╗██████╗  █████╗ ██████╗ ██╗  ██╗
+        ██╔════╝██╔══██╗██╔══██╗██╔══██╗██║ ██╔╝
+        ███████╗██████╔╝███████║██████╔╝█████╔╝
+        ╚════██║██╔═══╝ ██╔══██║██╔══██╗██╔═██╗
+        ███████║██║     ██║  ██║██║  ██║██║  ██╗
+        ╚══════╝╚═╝     ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝
+
+ASCII;
+
+    echo "\n";
+    echo color($logo, 'cyan');
+    echo color("        Write what matters.", 'dim') . color("  v{$v}\n\n", 'dim');
+
+    echo '  ' . color('USAGE', 'yellow') . "\n";
+    echo '  ' . color('php spark', 'white') . color(' <command> [options]', 'dim') . "\n\n";
+
+    $sections = [
+        ['Server', [
+            ['init', '[--force] [--quiet]', 'Prepare a fresh project skeleton'],
+            ['serve', '--port=8000', 'Start development server'],
+        ]],
+        ['Benchmark', [
+            ['benchmark', '--iterations= --warmup= --json', 'Run comparative core benchmarks'],
+            ['bench', '--iterations= --warmup= --no-save', 'Alias for benchmark'],
+        ]],
+        ['Database', [
+            ['migrate', '', 'Run pending migrations'],
+            ['migrate:rollback', '[batches]', 'Rollback last N batches'],
+            ['migrate:fresh', '', 'Drop all and re-run migrations'],
+            ['migrate:status', '', 'Show migration status table'],
+            ['seed', '[SeederName]', 'Run seeders'],
+        ]],
+        ['Queue', [
+            ['queue:work', '--queue= --sleep= --max-jobs=', 'Start queue worker'],
+            ['queue:clear', '[queue]', 'Clear a queue'],
+            ['queue:list', '', 'List all queues and job counts'],
+        ]],
+        ['Cache & Optimize', [
+            ['cache:clear', '', 'Clear all application cache'],
+            ['views:cache', '', 'Pre-compile all .spark views'],
+            ['views:clear', '', 'Clear compiled view cache'],
+            ['routes:cache', '', 'Cache route map'],
+            ['routes:clear', '', 'Clear route cache'],
+            ['routes:list', '', 'List all registered routes'],
+            ['inspector:clear', '', 'Clear Spark Inspector request history'],
+            ['inspector:status', '', 'Show Spark Inspector status'],
+            ['optimize', '', 'Run all caches for production'],
+        ]],
+        ['Scaffolding', [
+            ['make:model', '<Name>', 'Create a new model class'],
+            ['make:middleware', '<name>', 'Create a new middleware'],
+            ['make:migration', '<name>', 'Create a new migration file'],
+            ['make:service', '<Name>', 'Create a new service class'],
+            ['make:job', '<Name>', 'Create a new job class'],
+            ['make:event', '<name>', 'Create a new event file'],
+        ]],
+    ];
+
+    foreach ($sections as [$title, $commands]) {
+        echo '  ' . color($title, 'yellow') . "\n";
+        foreach ($commands as [$cmd, $args, $desc]) {
+            $cmdStr  = str_pad($cmd, 22);
+            $argStr  = str_pad($args, 34);
+            echo '    ' . color($cmdStr, 'green') . color($argStr, 'dim') . $desc . "\n";
+        }
+        echo "\n";
+    }
+}
+
+// ─── CLI output helpers ──────────────────────────────────────────────────────
+
+function color(string $text, string $style): string
+{
+    // Disable colors when piping or on Windows without ANSI support
+    if (!stream_isatty(STDOUT) && getenv('FORCE_COLOR') === false) {
+        return $text;
+    }
+
+    $codes = match ($style) {
+        'reset'   => "\e[0m",
+        'bold'    => "\e[1m",
+        'dim'     => "\e[2m",
+        'red'     => "\e[31m",
+        'green'   => "\e[32m",
+        'yellow'  => "\e[33m",
+        'blue'    => "\e[34m",
+        'magenta' => "\e[35m",
+        'cyan'    => "\e[36m",
+        'white'   => "\e[97m",
+        'bg_red'  => "\e[41m",
+        'bg_green'=> "\e[42m",
+        default   => "\e[0m",
+    };
+
+    return $codes . $text . "\e[0m";
+}
+
+function out(string $line): void
+{
+    echo $line . PHP_EOL;
+}
+
+function success(string $message): void
+{
+    out(color(' DONE ', 'bg_green') . ' ' . color($message, 'green'));
+}
+
+function error(string $message): void
+{
+    out(color(' ERROR ', 'bg_red') . ' ' . color($message, 'red'));
+}
+
+function sparkRenderBenchmarkReport(array $report, bool $saved): void
+{
+    echo "\n";
+    out(color('  ⚡ SparkPHP', 'cyan') . color(' comparative benchmarks', 'dim'));
+    out('  ' . color("Iterations: {$report['iterations']}  Warmup: {$report['warmup']}", 'dim'));
+    out('  ' . color('Fixture: isolated synthetic project', 'dim'));
+    echo "\n";
+
+    out('  ' . color(str_pad('Scenario', 28), 'yellow')
+        . color(str_pad('Avg ms', 12), 'yellow')
+        . color(str_pad('Median', 12), 'yellow')
+        . color(str_pad('P95', 12), 'yellow')
+        . color(str_pad('Ops/s', 12), 'yellow')
+        . color('Compare', 'yellow'));
+    out('  ' . color(str_repeat('─', 88), 'dim'));
+
+    foreach ($report['scenarios'] as $scenario) {
+        $comparison = '—';
+        if (isset($scenario['comparison']['speedup'])) {
+            $speedup = number_format($scenario['comparison']['speedup'], 2);
+            $comparison = $speedup . 'x vs ' . $scenario['comparison']['against'];
+        }
+
+        out(
+            '  '
+            . color(str_pad($scenario['name'], 28), 'green')
+            . color(str_pad(number_format($scenario['avg_ms'], 3), 12), 'white')
+            . color(str_pad(number_format($scenario['median_ms'], 3), 12), 'white')
+            . color(str_pad(number_format($scenario['p95_ms'], 3), 12), 'white')
+            . color(str_pad(number_format($scenario['ops_per_second'], 0), 12), 'cyan')
+            . color($comparison, 'dim')
+        );
+    }
+
+    echo "\n";
+
+    if ($saved && isset($report['saved_to'])) {
+        success('Benchmark report saved to ' . color(str_replace(SPARK_BASE . '/', '', $report['saved_to']), 'cyan'));
+    }
+}

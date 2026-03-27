@@ -1,0 +1,244 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Spark",
+  "scopeName": "text.html.spark",
+  "patterns": [
+    {
+      "include": "#spark-comments"
+    },
+    {
+      "include": "#spark-php-block"
+    },
+    {
+      "include": "#spark-raw-echo"
+    },
+    {
+      "include": "#spark-escaped-echo"
+    },
+    {
+      "include": "#spark-directive-with-args"
+    },
+    {
+      "include": "#spark-directive-plain"
+    },
+    {
+      "include": "#php-tag"
+    },
+    {
+      "include": "text.html.basic"
+    }
+  ],
+  "repository": {
+    "spark-comments": {
+      "name": "comment.block.spark",
+      "begin": "(\\{\\{--)",
+      "beginCaptures": {
+        "1": {
+          "name": "punctuation.definition.comment.begin.spark"
+        }
+      },
+      "end": "(--\\}\\})",
+      "endCaptures": {
+        "1": {
+          "name": "punctuation.definition.comment.end.spark"
+        }
+      }
+    },
+    "spark-php-block": {
+      "name": "meta.directive.php.spark",
+      "begin": "(@)(php)\\b",
+      "beginCaptures": {
+        "1": {
+          "name": "punctuation.definition.directive.spark"
+        },
+        "2": {
+          "name": "keyword.control.directive.spark"
+        }
+      },
+      "end": "(@)(endphp)\\b",
+      "endCaptures": {
+        "1": {
+          "name": "punctuation.definition.directive.spark"
+        },
+        "2": {
+          "name": "keyword.control.directive.spark"
+        }
+      },
+      "patterns": [
+        {
+          "include": "source.php"
+        }
+      ]
+    },
+    "spark-raw-echo": {
+      "name": "meta.output.raw.spark",
+      "begin": "(\\{!!)",
+      "beginCaptures": {
+        "1": {
+          "name": "punctuation.section.embedded.begin.spark"
+        }
+      },
+      "end": "(!!\\})",
+      "endCaptures": {
+        "1": {
+          "name": "punctuation.section.embedded.end.spark"
+        }
+      },
+      "patterns": [
+        {
+          "include": "#spark-expression"
+        }
+      ]
+    },
+    "spark-escaped-echo": {
+      "name": "meta.output.escaped.spark",
+      "begin": "(\\{\\{)",
+      "beginCaptures": {
+        "1": {
+          "name": "punctuation.section.embedded.begin.spark"
+        }
+      },
+      "end": "(\\}\\})",
+      "endCaptures": {
+        "1": {
+          "name": "punctuation.section.embedded.end.spark"
+        }
+      },
+      "patterns": [
+        {
+          "include": "#spark-expression"
+        }
+      ]
+    },
+    "spark-directive-with-args": {
+      "name": "meta.directive.call.spark",
+      "begin": "(@)(layout|extends|title|bodyClass|partial|css|js|stack|if|elseif|role|can|for|while|repeat|form|input|select|checkbox|radio|file|hidden|submit|component|slot|hasslot|active|img|icon|json|meta|cache|lazy)\\b\\s*(\\()",
+      "beginCaptures": {
+        "1": {
+          "name": "punctuation.definition.directive.spark"
+        },
+        "2": {
+          "name": "keyword.control.directive.spark"
+        },
+        "3": {
+          "name": "punctuation.section.group.begin.spark"
+        }
+      },
+      "end": "(\\))",
+      "endCaptures": {
+        "1": {
+          "name": "punctuation.section.group.end.spark"
+        }
+      },
+      "patterns": [
+        {
+          "include": "#spark-expression"
+        }
+      ]
+    },
+    "spark-directive-plain": {
+      "name": "meta.directive.spark",
+      "match": "(@)(content|else|empty|first|last|auth|dev|prod|once|endif|endauth|endrole|endcan|enddev|endprod|endforeach|endfor|endwhile|endrepeat|endform|endgroup|endcomponent|endslot|endhasslot|endcache|endlazy|endonce)\\b",
+      "captures": {
+        "1": {
+          "name": "punctuation.definition.directive.spark"
+        },
+        "2": {
+          "name": "keyword.control.directive.spark"
+        }
+      }
+    },
+    "spark-expression": {
+      "patterns": [
+        {
+          "include": "#named-arguments"
+        },
+        {
+          "include": "#pipes"
+        },
+        {
+          "include": "#strings"
+        },
+        {
+          "include": "#constants"
+        },
+        {
+          "include": "#numbers"
+        },
+        {
+          "include": "source.php"
+        }
+      ]
+    },
+    "named-arguments": {
+      "name": "entity.other.attribute-name.spark",
+      "match": "\\b[a-zA-Z_][a-zA-Z0-9_]*\\s*:"
+    },
+    "pipes": {
+      "name": "meta.pipe.spark",
+      "match": "(\\|)\\s*([a-zA-Z_][a-zA-Z0-9_]*)",
+      "captures": {
+        "1": {
+          "name": "keyword.operator.pipe.spark"
+        },
+        "2": {
+          "name": "support.function.pipe.spark"
+        }
+      }
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.single.spark",
+          "begin": "'",
+          "end": "'",
+          "patterns": [
+            {
+              "match": "\\\\.",
+              "name": "constant.character.escape.spark"
+            }
+          ]
+        },
+        {
+          "name": "string.quoted.double.spark",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "match": "\\\\.",
+              "name": "constant.character.escape.spark"
+            }
+          ]
+        }
+      ]
+    },
+    "constants": {
+      "name": "constant.language.spark",
+      "match": "\\b(?:true|false|null)\\b"
+    },
+    "numbers": {
+      "name": "constant.numeric.spark",
+      "match": "\\b\\d+(?:\\.\\d+)?\\b"
+    },
+    "php-tag": {
+      "name": "meta.embedded.block.php",
+      "begin": "<\\?(?:php|=)?",
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.section.embedded.begin.php"
+        }
+      },
+      "end": "\\?>",
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.section.embedded.end.php"
+        }
+      },
+      "patterns": [
+        {
+          "include": "source.php"
+        }
+      ]
+    }
+  }
+}

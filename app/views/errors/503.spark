@@ -1,0 +1,13 @@
+@layout('main')
+@title('Serviço indisponível')
+
+<div style="text-align:center;padding:5rem 1.5rem;font-family:system-ui,sans-serif;">
+    <div style="font-size:6rem;line-height:1;">🔧</div>
+    <h1 style="font-size:5rem;color:#e2e8f0;margin:.5rem 0;">503</h1>
+    <p style="font-size:1.25rem;color:#64748b;margin-bottom:2rem;">
+        O serviço está temporariamente indisponível. Voltamos em breve.
+    </p>
+    <a href="/" style="background:#f59e0b;color:#1e293b;padding:.75rem 2rem;border-radius:6px;text-decoration:none;font-weight:600;">
+        Tentar novamente
+    </a>
+</div>

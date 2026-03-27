@@ -1,0 +1,3 @@
+<footer style="background:#0f172a;color:#475569;padding:1.5rem 2rem;text-align:center;font-size:.85rem;margin-top:4rem;">
+    <p>{{ env('APP_NAME') }} &mdash; Powered by <strong style="color:#f59e0b;">SparkPHP</strong></p>
+</footer>

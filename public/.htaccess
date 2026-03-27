@@ -1,0 +1,16 @@
+Options -MultiViews -Indexes
+
+RewriteEngine On
+
+# Deny access to sensitive files
+RewriteRule ^\.env              - [F,L]
+RewriteRule ^storage/           - [F,L]
+RewriteRule ^core/              - [F,L]
+RewriteRule ^app/               - [F,L]
+
+# Allow direct access to existing files and directories (css, js, images)
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Route everything else through index.php
+RewriteRule ^ index.php [QSA,L]
