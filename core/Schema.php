@@ -112,6 +112,8 @@ class Blueprint
     private string $mode;
     /** @var array<int, ColumnDefinition> */
     private array $columns = [];
+    /** @var array<int, array{type: string, data: array}> DDL operations (drop, rename, etc.) */
+    private array $operations = [];
 
     public function __construct(string $table, string $mode)
     {
@@ -137,36 +139,160 @@ class Blueprint
         return $this->columns;
     }
 
+    /**
+     * @return array<int, array{type: string, data: array}>
+     */
+    public function operations(): array
+    {
+        return $this->operations;
+    }
+
+    // ─── Column definitions ──────────────────────
+
+    /**
+     * Auto-incrementing BIGINT primary key.
+     *
+     * ```php
+     * $table->id();
+     * $table->id('user_id');
+     * ```
+     */
     public function id(string $name = 'id'): ColumnDefinition
     {
         return $this->addColumn('id', $name)->primary()->autoIncrement();
     }
 
+    /**
+     * VARCHAR column.
+     *
+     * ```php
+     * $table->string('name');
+     * $table->string('code', 10);
+     * ```
+     */
     public function string(string $name, int $length = 255): ColumnDefinition
     {
         return $this->addColumn('string', $name, ['length' => $length]);
     }
 
+    /**
+     * TEXT column.
+     *
+     * ```php
+     * $table->text('description');
+     * ```
+     */
     public function text(string $name): ColumnDefinition
     {
         return $this->addColumn('text', $name);
     }
 
+    /**
+     * MEDIUMTEXT column (up to 16MB).
+     *
+     * ```php
+     * $table->mediumText('content');
+     * ```
+     */
+    public function mediumText(string $name): ColumnDefinition
+    {
+        return $this->addColumn('mediumText', $name);
+    }
+
+    /**
+     * LONGTEXT column (up to 4GB).
+     *
+     * ```php
+     * $table->longText('body');
+     * ```
+     */
+    public function longText(string $name): ColumnDefinition
+    {
+        return $this->addColumn('longText', $name);
+    }
+
+    /**
+     * BOOLEAN column.
+     *
+     * ```php
+     * $table->boolean('active')->default(true);
+     * ```
+     */
     public function boolean(string $name): ColumnDefinition
     {
         return $this->addColumn('boolean', $name);
     }
 
+    /**
+     * TINYINT column (MySQL) / SMALLINT (PostgreSQL) / INTEGER (SQLite).
+     *
+     * ```php
+     * $table->tinyInteger('priority');
+     * ```
+     */
+    public function tinyInteger(string $name): ColumnDefinition
+    {
+        return $this->addColumn('tinyInteger', $name);
+    }
+
+    /**
+     * SMALLINT column.
+     *
+     * ```php
+     * $table->smallInteger('quantity');
+     * ```
+     */
+    public function smallInteger(string $name): ColumnDefinition
+    {
+        return $this->addColumn('smallInteger', $name);
+    }
+
+    /**
+     * INT column.
+     *
+     * ```php
+     * $table->integer('age');
+     * ```
+     */
     public function integer(string $name): ColumnDefinition
     {
         return $this->addColumn('integer', $name);
     }
 
+    /**
+     * BIGINT column.
+     *
+     * ```php
+     * $table->bigInteger('views');
+     * ```
+     */
     public function bigInteger(string $name): ColumnDefinition
     {
         return $this->addColumn('bigInteger', $name);
     }
 
+    /**
+     * FLOAT column.
+     *
+     * ```php
+     * $table->float('latitude', 10, 7);
+     * ```
+     */
+    public function float(string $name, int $precision = 8, int $scale = 2): ColumnDefinition
+    {
+        return $this->addColumn('float', $name, [
+            'precision' => $precision,
+            'scale' => $scale,
+        ]);
+    }
+
+    /**
+     * DECIMAL column.
+     *
+     * ```php
+     * $table->decimal('price', 10, 2);
+     * ```
+     */
     public function decimal(string $name, int $precision = 10, int $scale = 2): ColumnDefinition
     {
         return $this->addColumn('decimal', $name, [
@@ -175,40 +301,199 @@ class Blueprint
         ]);
     }
 
+    /**
+     * ENUM column (limited set of allowed values).
+     *
+     * ```php
+     * $table->enum('status', ['active', 'inactive', 'suspended']);
+     * ```
+     */
+    public function enum(string $name, array $values): ColumnDefinition
+    {
+        return $this->addColumn('enum', $name, ['values' => $values]);
+    }
+
+    /**
+     * JSON / JSONB column.
+     *
+     * ```php
+     * $table->json('metadata');
+     * ```
+     */
     public function json(string $name): ColumnDefinition
     {
         return $this->addColumn('json', $name);
     }
 
+    /**
+     * DATE column.
+     *
+     * ```php
+     * $table->date('birthday');
+     * ```
+     */
     public function date(string $name): ColumnDefinition
     {
         return $this->addColumn('date', $name);
     }
 
+    /**
+     * DATETIME column.
+     *
+     * ```php
+     * $table->datetime('published_at');
+     * ```
+     */
     public function datetime(string $name): ColumnDefinition
     {
         return $this->addColumn('datetime', $name);
     }
 
+    /**
+     * TIMESTAMP column.
+     *
+     * ```php
+     * $table->timestamp('verified_at');
+     * ```
+     */
     public function timestamp(string $name): ColumnDefinition
     {
         return $this->addColumn('timestamp', $name);
     }
 
+    /**
+     * Add created_at and updated_at TIMESTAMP columns.
+     *
+     * ```php
+     * $table->timestamps();
+     * ```
+     */
     public function timestamps(): void
     {
         $this->timestamp('created_at')->nullable();
         $this->timestamp('updated_at')->nullable();
     }
 
+    /**
+     * Add a deleted_at TIMESTAMP column for soft deletes.
+     *
+     * ```php
+     * $table->softDeletes();
+     * ```
+     */
+    public function softDeletes(string $name = 'deleted_at'): ColumnDefinition
+    {
+        return $this->timestamp($name)->nullable();
+    }
+
+    /**
+     * UUID column (CHAR(36) for MySQL/SQLite, native UUID for PostgreSQL).
+     *
+     * ```php
+     * $table->uuid('external_id');
+     * ```
+     */
     public function uuid(string $name): ColumnDefinition
     {
         return $this->addColumn('uuid', $name);
     }
 
+    /**
+     * BLOB / BYTEA column for binary data.
+     *
+     * ```php
+     * $table->binary('file_data');
+     * ```
+     */
+    public function binary(string $name): ColumnDefinition
+    {
+        return $this->addColumn('binary', $name);
+    }
+
+    /**
+     * Foreign key column (BIGINT UNSIGNED).
+     *
+     * ```php
+     * $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+     * ```
+     */
     public function foreignId(string $name): ColumnDefinition
     {
         return $this->addColumn('foreignId', $name)->unsigned();
+    }
+
+    // ─── Schema operations (for Schema::table) ──
+
+    /**
+     * Drop a column from the table.
+     *
+     * ```php
+     * Schema::table('users', function (Blueprint $table) {
+     *     $table->dropColumn('legacy_field');
+     * });
+     * ```
+     */
+    public function dropColumn(string ...$columns): void
+    {
+        foreach ($columns as $column) {
+            $this->operations[] = ['type' => 'dropColumn', 'data' => ['column' => $column]];
+        }
+    }
+
+    /**
+     * Rename a column.
+     *
+     * ```php
+     * Schema::table('users', function (Blueprint $table) {
+     *     $table->renameColumn('name', 'full_name');
+     * });
+     * ```
+     */
+    public function renameColumn(string $from, string $to): void
+    {
+        $this->operations[] = ['type' => 'renameColumn', 'data' => ['from' => $from, 'to' => $to]];
+    }
+
+    /**
+     * Drop an index.
+     *
+     * ```php
+     * Schema::table('users', function (Blueprint $table) {
+     *     $table->dropIndex('users_email_index');
+     * });
+     * ```
+     */
+    public function dropIndex(string $indexName): void
+    {
+        $this->operations[] = ['type' => 'dropIndex', 'data' => ['name' => $indexName]];
+    }
+
+    /**
+     * Drop a unique constraint.
+     *
+     * ```php
+     * Schema::table('users', function (Blueprint $table) {
+     *     $table->dropUnique('users_email_unique');
+     * });
+     * ```
+     */
+    public function dropUnique(string $indexName): void
+    {
+        $this->operations[] = ['type' => 'dropIndex', 'data' => ['name' => $indexName]];
+    }
+
+    /**
+     * Drop a foreign key constraint.
+     *
+     * ```php
+     * Schema::table('users', function (Blueprint $table) {
+     *     $table->dropForeign('posts_user_id_foreign');
+     * });
+     * ```
+     */
+    public function dropForeign(string $constraintName): void
+    {
+        $this->operations[] = ['type' => 'dropForeign', 'data' => ['name' => $constraintName]];
     }
 
     private function addColumn(string $type, string $name, array $attributes = []): ColumnDefinition
@@ -239,6 +524,8 @@ class ColumnDefinition
     private ?string $onTable = null;
     private ?string $onDelete = null;
     private ?string $onUpdate = null;
+    private ?string $after = null;
+    private ?string $comment = null;
 
     public function __construct(Blueprint $blueprint, string $type, string $name, array $attributes = [])
     {
@@ -268,12 +555,14 @@ class ColumnDefinition
         return $this->attributes;
     }
 
+    /** Mark the column as nullable. */
     public function nullable(bool $value = true): static
     {
         $this->nullable = $value;
         return $this;
     }
 
+    /** Set a default value for the column. */
     public function default(mixed $value): static
     {
         $this->defaultSet = true;
@@ -281,6 +570,7 @@ class ColumnDefinition
         return $this;
     }
 
+    /** Add a UNIQUE constraint. */
     public function unique(?string $name = null): static
     {
         $this->unique = true;
@@ -288,6 +578,7 @@ class ColumnDefinition
         return $this;
     }
 
+    /** Add an INDEX. */
     public function index(?string $name = null): static
     {
         $this->index = true;
@@ -295,36 +586,48 @@ class ColumnDefinition
         return $this;
     }
 
+    /** Mark as PRIMARY KEY. */
     public function primary(bool $value = true): static
     {
         $this->primary = $value;
         return $this;
     }
 
+    /** Mark as UNSIGNED (MySQL). */
     public function unsigned(bool $value = true): static
     {
         $this->unsigned = $value;
         return $this;
     }
 
+    /** Mark as AUTO_INCREMENT / SERIAL. */
     public function autoIncrement(bool $value = true): static
     {
         $this->autoIncrement = $value;
         return $this;
     }
 
+    /** Set the column this references (foreign key). */
     public function references(string $column): static
     {
         $this->references = $column;
         return $this;
     }
 
+    /** Set the table this column references. */
     public function on(string $table): static
     {
         $this->onTable = $table;
         return $this;
     }
 
+    /**
+     * Shorthand to set foreign key reference and table.
+     *
+     * ```php
+     * $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+     * ```
+     */
     public function constrained(?string $table = null, string $column = 'id'): static
     {
         $table ??= $this->inferForeignTable();
@@ -332,118 +635,94 @@ class ColumnDefinition
         return $this->references($column)->on($table);
     }
 
+    /** Set ON DELETE action. */
     public function onDelete(string $action): static
     {
         $this->onDelete = strtoupper($action);
         return $this;
     }
 
+    /** Set ON UPDATE action. */
     public function onUpdate(string $action): static
     {
         $this->onUpdate = strtoupper($action);
         return $this;
     }
 
+    /** Shorthand: ON DELETE CASCADE. */
     public function cascadeOnDelete(): static
     {
         return $this->onDelete('cascade');
     }
 
+    /** Shorthand: ON DELETE SET NULL. */
     public function nullOnDelete(): static
     {
         return $this->onDelete('set null');
     }
 
-    public function isNullable(): bool
+    /**
+     * Position this column after another (MySQL only, ignored on other drivers).
+     *
+     * ```php
+     * $table->string('phone')->after('email');
+     * ```
+     */
+    public function after(string $column): static
     {
-        return $this->nullable;
+        $this->after = $column;
+        return $this;
     }
 
-    public function isUnsigned(): bool
+    /**
+     * Add a comment to the column (MySQL only).
+     *
+     * ```php
+     * $table->string('code')->comment('ISO country code');
+     * ```
+     */
+    public function comment(string $comment): static
     {
-        return $this->unsigned;
+        $this->comment = $comment;
+        return $this;
     }
 
-    public function isAutoIncrement(): bool
-    {
-        return $this->autoIncrement;
-    }
+    // ─── Introspection ───────────────────────────
 
-    public function isPrimary(): bool
-    {
-        return $this->primary;
-    }
-
-    public function hasDefault(): bool
-    {
-        return $this->defaultSet;
-    }
-
-    public function defaultValue(): mixed
-    {
-        return $this->default;
-    }
+    public function isNullable(): bool { return $this->nullable; }
+    public function isUnsigned(): bool { return $this->unsigned; }
+    public function isAutoIncrement(): bool { return $this->autoIncrement; }
+    public function isPrimary(): bool { return $this->primary; }
+    public function hasDefault(): bool { return $this->defaultSet; }
+    public function defaultValue(): mixed { return $this->default; }
+    public function hasIndex(): bool { return $this->index; }
+    public function hasUnique(): bool { return $this->unique; }
+    public function hasForeign(): bool { return $this->references !== null && $this->onTable !== null; }
+    public function hasAfter(): bool { return $this->after !== null; }
+    public function afterColumn(): ?string { return $this->after; }
+    public function hasComment(): bool { return $this->comment !== null; }
+    public function commentText(): ?string { return $this->comment; }
+    public function referencesColumn(): ?string { return $this->references; }
+    public function onTable(): ?string { return $this->onTable; }
+    public function onDeleteAction(): ?string { return $this->onDelete; }
+    public function onUpdateAction(): ?string { return $this->onUpdate; }
 
     public function indexName(string $table): ?string
     {
-        if (!$this->hasIndex()) {
-            return null;
-        }
-
+        if (!$this->hasIndex()) { return null; }
         return $this->indexName ?: "{$table}_{$this->name}_index";
     }
 
     public function uniqueName(string $table): ?string
     {
-        if (!$this->hasUnique()) {
-            return null;
-        }
-
+        if (!$this->hasUnique()) { return null; }
         return $this->uniqueName ?: "{$table}_{$this->name}_unique";
     }
 
     public function foreignName(string $table): ?string
     {
-        if (!$this->hasForeign()) {
-            return null;
-        }
-
+        if (!$this->hasForeign()) { return null; }
         return "{$table}_{$this->name}_foreign";
-    }
-
-    public function hasIndex(): bool
-    {
-        return $this->index;
-    }
-
-    public function hasUnique(): bool
-    {
-        return $this->unique;
-    }
-
-    public function hasForeign(): bool
-    {
-        return $this->references !== null && $this->onTable !== null;
-    }
-
-    public function referencesColumn(): ?string
-    {
-        return $this->references;
-    }
-
-    public function onTable(): ?string
-    {
-        return $this->onTable;
-    }
-
-    public function onDeleteAction(): ?string
-    {
-        return $this->onDelete;
-    }
-
-    public function onUpdateAction(): ?string
-    {
-        return $this->onUpdate;
     }
 
     private function inferForeignTable(): string
@@ -545,6 +824,7 @@ abstract class SchemaGrammar
     {
         $statements = [];
 
+        // Process column additions
         foreach ($blueprint->columns() as $column) {
             if ($column->hasForeign()) {
                 throw new RuntimeException('Adding foreign keys to existing tables is not supported in Database v2.');
@@ -555,14 +835,64 @@ abstract class SchemaGrammar
             }
 
             $definition = $this->compileColumn($column, false);
-            $statements[] = "ALTER TABLE {$this->wrapTable($blueprint->table())} ADD COLUMN {$definition}";
+            $addSql = "ALTER TABLE {$this->wrapTable($blueprint->table())} ADD COLUMN {$definition}";
+
+            // MySQL AFTER clause
+            if ($column->hasAfter()) {
+                $addSql .= ' AFTER ' . $this->wrapColumn($column->afterColumn());
+            }
+
+            $statements[] = $addSql;
 
             foreach ($this->compileIndexes($blueprint->table(), $column) as $statement) {
                 $statements[] = $statement;
             }
         }
 
+        // Process DDL operations (drop, rename, drop index, etc.)
+        foreach ($blueprint->operations() as $op) {
+            $statements = array_merge($statements, $this->compileOperation($blueprint->table(), $op));
+        }
+
         return $statements;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    protected function compileOperation(string $table, array $op): array
+    {
+        return match ($op['type']) {
+            'dropColumn'    => $this->compileDropColumn($table, $op['data']['column']),
+            'renameColumn'  => $this->compileRenameColumn($table, $op['data']['from'], $op['data']['to']),
+            'dropIndex'     => $this->compileDropIndex($op['data']['name']),
+            'dropForeign'   => $this->compileDropForeign($table, $op['data']['name']),
+            default         => throw new RuntimeException("Unsupported operation: {$op['type']}"),
+        };
+    }
+
+    /** @return array<int, string> */
+    protected function compileDropColumn(string $table, string $column): array
+    {
+        return ["ALTER TABLE {$this->wrapTable($table)} DROP COLUMN {$this->wrapColumn($column)}"];
+    }
+
+    /** @return array<int, string> */
+    protected function compileRenameColumn(string $table, string $from, string $to): array
+    {
+        return ["ALTER TABLE {$this->wrapTable($table)} RENAME COLUMN {$this->wrapColumn($from)} TO {$this->wrapColumn($to)}"];
+    }
+
+    /** @return array<int, string> */
+    protected function compileDropIndex(string $indexName): array
+    {
+        return ["DROP INDEX {$this->wrapIdentifier($indexName)}"];
+    }
+
+    /** @return array<int, string> */
+    protected function compileDropForeign(string $table, string $constraintName): array
+    {
+        return ["ALTER TABLE {$this->wrapTable($table)} DROP CONSTRAINT {$this->wrapIdentifier($constraintName)}"];
     }
 
     protected function compileColumn(ColumnDefinition $column, bool $allowPrimary): string
@@ -699,20 +1029,33 @@ class MySqlSchemaGrammar extends SchemaGrammar
     protected function columnType(ColumnDefinition $column): string
     {
         return match ($column->type()) {
-            'string' => 'VARCHAR(' . ($column->attributes()['length'] ?? 255) . ')',
-            'text' => 'TEXT',
-            'boolean' => 'BOOLEAN',
-            'integer' => 'INT' . ($column->isUnsigned() ? ' UNSIGNED' : ''),
-            'bigInteger' => 'BIGINT' . ($column->isUnsigned() ? ' UNSIGNED' : ''),
-            'decimal' => 'DECIMAL(' . ($column->attributes()['precision'] ?? 10) . ', ' . ($column->attributes()['scale'] ?? 2) . ')' . ($column->isUnsigned() ? ' UNSIGNED' : ''),
-            'json' => 'JSON',
-            'date' => 'DATE',
-            'datetime' => 'DATETIME',
-            'timestamp' => 'TIMESTAMP',
-            'uuid' => 'CHAR(36)',
-            'foreignId' => 'BIGINT UNSIGNED',
-            default => throw new RuntimeException("Unsupported column type [{$column->type()}] for mysql"),
+            'string'      => 'VARCHAR(' . ($column->attributes()['length'] ?? 255) . ')',
+            'text'        => 'TEXT',
+            'mediumText'  => 'MEDIUMTEXT',
+            'longText'    => 'LONGTEXT',
+            'boolean'     => 'BOOLEAN',
+            'tinyInteger' => 'TINYINT' . ($column->isUnsigned() ? ' UNSIGNED' : ''),
+            'smallInteger'=> 'SMALLINT' . ($column->isUnsigned() ? ' UNSIGNED' : ''),
+            'integer'     => 'INT' . ($column->isUnsigned() ? ' UNSIGNED' : ''),
+            'bigInteger'  => 'BIGINT' . ($column->isUnsigned() ? ' UNSIGNED' : ''),
+            'float'       => 'FLOAT(' . ($column->attributes()['precision'] ?? 8) . ', ' . ($column->attributes()['scale'] ?? 2) . ')' . ($column->isUnsigned() ? ' UNSIGNED' : ''),
+            'decimal'     => 'DECIMAL(' . ($column->attributes()['precision'] ?? 10) . ', ' . ($column->attributes()['scale'] ?? 2) . ')' . ($column->isUnsigned() ? ' UNSIGNED' : ''),
+            'enum'        => "ENUM('" . implode("','", $column->attributes()['values'] ?? []) . "')",
+            'json'        => 'JSON',
+            'date'        => 'DATE',
+            'datetime'    => 'DATETIME',
+            'timestamp'   => 'TIMESTAMP',
+            'uuid'        => 'CHAR(36)',
+            'binary'      => 'BLOB',
+            'foreignId'   => 'BIGINT UNSIGNED',
+            default       => throw new RuntimeException("Unsupported column type [{$column->type()}] for mysql"),
         };
+    }
+
+    protected function compileDropForeign(string $table, string $constraintName): array
+    {
+        // MySQL uses DROP FOREIGN KEY instead of DROP CONSTRAINT
+        return ["ALTER TABLE {$this->wrapTable($table)} DROP FOREIGN KEY {$this->wrapIdentifier($constraintName)}"];
     }
 
     protected function compileCreateTableSuffix(): string
@@ -736,19 +1079,26 @@ class PgsqlSchemaGrammar extends SchemaGrammar
     protected function columnType(ColumnDefinition $column): string
     {
         return match ($column->type()) {
-            'string' => 'VARCHAR(' . ($column->attributes()['length'] ?? 255) . ')',
-            'text' => 'TEXT',
-            'boolean' => 'BOOLEAN',
-            'integer' => 'INTEGER',
-            'bigInteger' => 'BIGINT',
-            'decimal' => 'NUMERIC(' . ($column->attributes()['precision'] ?? 10) . ', ' . ($column->attributes()['scale'] ?? 2) . ')',
-            'json' => 'JSONB',
-            'date' => 'DATE',
-            'datetime' => 'TIMESTAMP(0) WITHOUT TIME ZONE',
-            'timestamp' => 'TIMESTAMP(0) WITHOUT TIME ZONE',
-            'uuid' => 'UUID',
-            'foreignId' => 'BIGINT',
-            default => throw new RuntimeException("Unsupported column type [{$column->type()}] for pgsql"),
+            'string'      => 'VARCHAR(' . ($column->attributes()['length'] ?? 255) . ')',
+            'text'        => 'TEXT',
+            'mediumText'  => 'TEXT',
+            'longText'    => 'TEXT',
+            'boolean'     => 'BOOLEAN',
+            'tinyInteger' => 'SMALLINT',
+            'smallInteger'=> 'SMALLINT',
+            'integer'     => 'INTEGER',
+            'bigInteger'  => 'BIGINT',
+            'float'       => 'DOUBLE PRECISION',
+            'decimal'     => 'NUMERIC(' . ($column->attributes()['precision'] ?? 10) . ', ' . ($column->attributes()['scale'] ?? 2) . ')',
+            'enum'        => 'VARCHAR(255)',
+            'json'        => 'JSONB',
+            'date'        => 'DATE',
+            'datetime'    => 'TIMESTAMP(0) WITHOUT TIME ZONE',
+            'timestamp'   => 'TIMESTAMP(0) WITHOUT TIME ZONE',
+            'uuid'        => 'UUID',
+            'binary'      => 'BYTEA',
+            'foreignId'   => 'BIGINT',
+            default       => throw new RuntimeException("Unsupported column type [{$column->type()}] for pgsql"),
         };
     }
 
@@ -778,19 +1128,26 @@ class SqliteSchemaGrammar extends SchemaGrammar
     protected function columnType(ColumnDefinition $column): string
     {
         return match ($column->type()) {
-            'string' => 'VARCHAR(' . ($column->attributes()['length'] ?? 255) . ')',
-            'text' => 'TEXT',
-            'boolean' => 'INTEGER',
-            'integer' => 'INTEGER',
-            'bigInteger' => 'BIGINT',
-            'decimal' => 'NUMERIC(' . ($column->attributes()['precision'] ?? 10) . ', ' . ($column->attributes()['scale'] ?? 2) . ')',
-            'json' => 'TEXT',
-            'date' => 'TEXT',
-            'datetime' => 'TEXT',
-            'timestamp' => 'TEXT',
-            'uuid' => 'TEXT',
-            'foreignId' => 'INTEGER',
-            default => throw new RuntimeException("Unsupported column type [{$column->type()}] for sqlite"),
+            'string'      => 'VARCHAR(' . ($column->attributes()['length'] ?? 255) . ')',
+            'text'        => 'TEXT',
+            'mediumText'  => 'TEXT',
+            'longText'    => 'TEXT',
+            'boolean'     => 'INTEGER',
+            'tinyInteger' => 'INTEGER',
+            'smallInteger'=> 'INTEGER',
+            'integer'     => 'INTEGER',
+            'bigInteger'  => 'BIGINT',
+            'float'       => 'REAL',
+            'decimal'     => 'NUMERIC(' . ($column->attributes()['precision'] ?? 10) . ', ' . ($column->attributes()['scale'] ?? 2) . ')',
+            'enum'        => 'TEXT',
+            'json'        => 'TEXT',
+            'date'        => 'TEXT',
+            'datetime'    => 'TEXT',
+            'timestamp'   => 'TEXT',
+            'uuid'        => 'TEXT',
+            'binary'      => 'BLOB',
+            'foreignId'   => 'INTEGER',
+            default       => throw new RuntimeException("Unsupported column type [{$column->type()}] for sqlite"),
         };
     }
 }

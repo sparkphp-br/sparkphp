@@ -34,6 +34,11 @@ try {
         $command === 'migrate:fresh' || $command === 'db:fresh' => sparkDbFresh($rest),
         $command === 'migrate:status'        => sparkMigrateStatus(),
 
+        // ── Database inspection ───────────────────────────────────────────────
+        $command === 'db:show'               => sparkDbShow(),
+        $command === 'db:table'              => sparkDbTable($rest[0] ?? null),
+        $command === 'db:wipe'               => sparkDbWipe(),
+
         // ── Seeds ─────────────────────────────────────────────────────────────
         $command === 'seed'  => sparkSeed($rest[0] ?? null),
 
@@ -467,6 +472,210 @@ function sparkMigrateStatus(): void
     echo "\n";
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Database inspection commands
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Show database overview: all tables with column count and row count.
+ *
+ * Usage: php spark db:show
+ */
+function sparkDbShow(): void
+{
+    sparkBootDatabaseCore();
+
+    $db     = db();
+    $driver = $db->driver();
+    $dbName = $_ENV['DB_NAME'] ?? $_ENV['DB_DATABASE'] ?? 'unknown';
+
+    echo "\n";
+    out(color('  ⚡ Database Overview', 'cyan') . color("  [{$driver}:{$dbName}]", 'dim'));
+    echo "\n";
+
+    // Get tables
+    $tables = [];
+    if ($driver === 'mysql') {
+        $rows = $db->raw(
+            "SELECT table_name as name, table_rows as row_count "
+            . "FROM information_schema.tables "
+            . "WHERE table_schema = ? AND table_type = 'BASE TABLE' ORDER BY table_name",
+            [$dbName]
+        );
+        foreach ($rows as $row) {
+            $cols = $db->raw(
+                "SELECT COUNT(*) as cnt FROM information_schema.columns WHERE table_schema = ? AND table_name = ?",
+                [$dbName, $row->name]
+            );
+            $tables[] = [
+                'name' => $row->name,
+                'rows' => (int) $row->row_count,
+                'cols' => (int) ($cols[0]->cnt ?? 0),
+            ];
+        }
+    } elseif ($driver === 'pgsql') {
+        $rows = $db->raw("SELECT tablename as name FROM pg_tables WHERE schemaname = current_schema() ORDER BY tablename");
+        foreach ($rows as $row) {
+            $countRow = $db->raw("SELECT COUNT(*) as cnt FROM " . '"' . $row->name . '"');
+            $colsRow  = $db->raw(
+                "SELECT COUNT(*) as cnt FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = ?",
+                [$row->name]
+            );
+            $tables[] = [
+                'name' => $row->name,
+                'rows' => (int) ($countRow[0]->cnt ?? 0),
+                'cols' => (int) ($colsRow[0]->cnt ?? 0),
+            ];
+        }
+    } elseif ($driver === 'sqlite') {
+        $rows = $db->raw("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name");
+        foreach ($rows as $row) {
+            $countRow = $db->raw("SELECT COUNT(*) as cnt FROM \"{$row->name}\"");
+            $colsRow  = $db->raw("PRAGMA table_info('{$row->name}')");
+            $tables[] = [
+                'name' => $row->name,
+                'rows' => (int) ($countRow[0]->cnt ?? 0),
+                'cols' => count($colsRow),
+            ];
+        }
+    }
+
+    if (empty($tables)) {
+        out(color('  No tables found.', 'dim'));
+        echo "\n";
+        return;
+    }
+
+    // Header
+    out('  ' . color(str_pad('Table', 40), 'yellow')
+        . color(str_pad('Columns', 12), 'yellow')
+        . color('Rows', 'yellow'));
+    out('  ' . color(str_repeat('─', 60), 'dim'));
+
+    $totalRows = 0;
+    foreach ($tables as $t) {
+        out('  ' . color(str_pad($t['name'], 40), 'green')
+            . str_pad((string) $t['cols'], 12)
+            . number_format($t['rows']));
+        $totalRows += $t['rows'];
+    }
+
+    out('  ' . color(str_repeat('─', 60), 'dim'));
+    out('  ' . color(str_pad(count($tables) . ' tables', 40), 'cyan')
+        . str_pad('', 12)
+        . color(number_format($totalRows) . ' total rows', 'cyan'));
+    echo "\n";
+}
+
+/**
+ * Show the structure of a specific database table.
+ *
+ * Usage: php spark db:table users
+ */
+function sparkDbTable(?string $tableName): void
+{
+    if (!$tableName) {
+        error('Please specify a table name: php spark db:table <name>');
+        exit(1);
+    }
+
+    sparkBootDatabaseCore();
+
+    $db     = db();
+    $driver = $db->driver();
+    $dbName = $_ENV['DB_NAME'] ?? $_ENV['DB_DATABASE'] ?? '';
+
+    echo "\n";
+    out(color("  ⚡ Table: {$tableName}", 'cyan') . color("  [{$driver}]", 'dim'));
+    echo "\n";
+
+    // Get columns
+    $columns = [];
+    if ($driver === 'mysql') {
+        $columns = $db->raw(
+            "SELECT column_name as name, column_type as type, is_nullable as nullable, "
+            . "column_default as `default`, column_key as `key`, extra "
+            . "FROM information_schema.columns "
+            . "WHERE table_schema = ? AND table_name = ? ORDER BY ordinal_position",
+            [$dbName, $tableName]
+        );
+    } elseif ($driver === 'pgsql') {
+        $columns = $db->raw(
+            "SELECT column_name as name, data_type as type, is_nullable as nullable, "
+            . "column_default as default "
+            . "FROM information_schema.columns "
+            . "WHERE table_schema = current_schema() AND table_name = ? ORDER BY ordinal_position",
+            [$tableName]
+        );
+    } elseif ($driver === 'sqlite') {
+        $columns = $db->raw("PRAGMA table_info('{$tableName}')");
+    }
+
+    if (empty($columns)) {
+        error("Table '{$tableName}' not found or has no columns.");
+        exit(1);
+    }
+
+    // Header
+    out('  ' . color(str_pad('Column', 28), 'yellow')
+        . color(str_pad('Type', 28), 'yellow')
+        . color(str_pad('Nullable', 12), 'yellow')
+        . color(str_pad('Default', 18), 'yellow')
+        . color('Key', 'yellow'));
+    out('  ' . color(str_repeat('─', 96), 'dim'));
+
+    foreach ($columns as $col) {
+        $col = (object) (array) $col;
+
+        if ($driver === 'sqlite') {
+            $name     = $col->name ?? '';
+            $type     = $col->type ?? 'TEXT';
+            $nullable = ($col->notnull ?? 0) ? 'NO' : 'YES';
+            $default  = $col->dflt_value ?? '—';
+            $key      = ($col->pk ?? 0) ? 'PRI' : '';
+        } else {
+            $name     = $col->name ?? '';
+            $type     = $col->type ?? '';
+            $nullable = ($col->nullable ?? 'YES');
+            $default  = $col->default ?? '—';
+            $key      = $col->key ?? '';
+        }
+
+        $nullColor = ($nullable === 'YES') ? 'yellow' : 'green';
+
+        out('  ' . color(str_pad($name, 28), 'green')
+            . str_pad($type, 28)
+            . color(str_pad($nullable, 12), $nullColor)
+            . color(str_pad((string) $default, 18), 'dim')
+            . ($key ? color($key, 'cyan') : ''));
+    }
+
+    // Row count
+    try {
+        $wrapped = ($driver === 'mysql') ? "`{$tableName}`" : (($driver === 'pgsql') ? '"' . $tableName . '"' : $tableName);
+        $countRow = $db->raw("SELECT COUNT(*) as cnt FROM {$wrapped}");
+        $rowCount = $countRow[0]->cnt ?? 0;
+        echo "\n";
+        out('  ' . color(number_format((int) $rowCount) . ' rows', 'cyan'));
+    } catch (Throwable) {}
+
+    echo "\n";
+}
+
+/**
+ * Drop all tables without re-running migrations (complete wipe).
+ *
+ * Usage: php spark db:wipe
+ */
+function sparkDbWipe(): void
+{
+    sparkBootDatabaseCore();
+
+    out(color('  Dropping all tables...', 'yellow'));
+    sparkDropAllTables();
+    success('All tables dropped successfully.');
+}
+
 function sparkNormalizeSeederClass(?string $seeder): string
 {
     if ($seeder === null || $seeder === '') {
@@ -839,6 +1048,9 @@ ASCII;
             ['db:fresh', '[--seed]', 'Drop all tables and re-run migrations'],
             ['migrate:status', '', 'Show migration status table'],
             ['seed', '[SeederClass]', 'Run the database seeder'],
+            ['db:show', '', 'Show database overview (tables + row counts)'],
+            ['db:table', '<name>', 'Show columns and structure of a table'],
+            ['db:wipe', '', 'Drop all tables (no re-migrate)'],
         ]],
         ['Queue', [
             ['queue:work', '--queue= --sleep= --max-jobs=', 'Start queue worker'],
