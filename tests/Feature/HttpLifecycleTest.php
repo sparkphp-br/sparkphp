@@ -56,10 +56,10 @@ final class HttpLifecycleTest extends TestCase
 
         $this->assertSame(200, $response['status']);
         $this->assertStringContainsString('Spark Inspector', $response['body']);
-        $this->assertStringContainsString('spark-inspector-minimize', $response['body']);
+        $this->assertStringContainsString('spark-inspector-badge-toggle', $response['body']);
         $this->assertStringContainsString('spark-inspector-toggle', $response['body']);
         $this->assertStringContainsString('spark-inspector-handle', $response['body']);
-        $this->assertStringContainsString('spark-inspector-restore', $response['body']);
+        $this->assertStringContainsString('spark-inspector-badge-restore', $response['body']);
         $this->assertNotNull($requestId);
         $this->assertSame('/_spark/requests/' . $requestId, $inspectorUrl);
         $this->assertStringContainsString('total;dur=', (string) $serverTiming);

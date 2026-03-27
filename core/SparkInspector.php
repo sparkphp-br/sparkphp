@@ -548,6 +548,8 @@ class SparkInspector
     #spark-inspector-toolbar .spark-inspector-header:active{cursor:grabbing;}
     #spark-inspector-toolbar .spark-inspector-title{display:flex;align-items:center;gap:10px;min-width:0;}
     #spark-inspector-toolbar .spark-inspector-badge{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:999px;background:#f59e0b;color:#111827;font-size:14px;font-weight:800;flex:0 0 auto;}
+    #spark-inspector-toolbar .spark-inspector-badge-toggle{border:0;cursor:pointer;padding:0;transition:transform .15s ease,filter .15s ease;}
+    #spark-inspector-toolbar .spark-inspector-badge-toggle:hover{filter:brightness(1.05);transform:scale(1.04);}
     #spark-inspector-toolbar .spark-inspector-name{color:#f59e0b;font-weight:700;}
     #spark-inspector-toolbar .spark-inspector-summary{color:#d1d5db;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
     #spark-inspector-toolbar .spark-inspector-controls{display:flex;align-items:center;gap:8px;flex:0 0 auto;}
@@ -561,17 +563,18 @@ class SparkInspector
     #spark-inspector-toolbar .spark-inspector-metric span{display:block;color:#9ca3af;font-size:11px;margin-top:2px;}
     #spark-inspector-toolbar .spark-inspector-footer{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 12px 12px;}
     #spark-inspector-toolbar .spark-inspector-id{color:#9ca3af;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-    #spark-inspector-toolbar .spark-inspector-minimized{display:none;padding:10px;}
-    #spark-inspector-toolbar .spark-inspector-minimized-button{display:flex;align-items:center;justify-content:center;width:72px;height:72px;border:0;border-radius:22px;background:#1f2937;cursor:pointer;padding:0;box-shadow:inset 0 0 0 1px #374151;}
+    #spark-inspector-toolbar .spark-inspector-minimized{display:none;padding:0;}
+    #spark-inspector-toolbar .spark-inspector-minimized-button{display:flex;align-items:center;justify-content:center;width:44px;height:44px;border:0;border-radius:14px;background:#1f2937;cursor:pointer;padding:0;box-shadow:0 8px 18px rgba(0,0,0,.24),inset 0 0 0 1px #374151;}
     #spark-inspector-toolbar .spark-inspector-minimized-button:hover{background:#263244;}
-    #spark-inspector-toolbar .spark-inspector-minimized-button .spark-inspector-badge{width:48px;height:48px;font-size:24px;}
+    #spark-inspector-toolbar .spark-inspector-minimized-button .spark-inspector-badge{width:28px;height:28px;font-size:15px;}
     #spark-inspector-toolbar[data-state="compact"] .spark-inspector-body,
     #spark-inspector-toolbar[data-state="compact"] .spark-inspector-footer,
     #spark-inspector-toolbar[data-state="compact"] .spark-inspector-name{display:none;}
     #spark-inspector-toolbar[data-state="compact"]{max-width:min(240px,calc(100vw - 24px));}
     #spark-inspector-toolbar[data-state="compact"] .spark-inspector-header{padding:8px 10px;}
     #spark-inspector-toolbar[data-state="compact"] .spark-inspector-summary{max-width:110px;}
-    #spark-inspector-toolbar[data-state="minimized"]{max-width:92px;}
+    #spark-inspector-toolbar[data-state="minimized"]{max-width:44px;}
+    #spark-inspector-toolbar[data-state="minimized"] .spark-inspector-shell{background:transparent;border:0;border-radius:0;box-shadow:none;backdrop-filter:none;overflow:visible;}
     #spark-inspector-toolbar[data-state="minimized"] .spark-inspector-header,
     #spark-inspector-toolbar[data-state="minimized"] .spark-inspector-body,
     #spark-inspector-toolbar[data-state="minimized"] .spark-inspector-footer{display:none;}
@@ -586,14 +589,13 @@ class SparkInspector
   <div class="spark-inspector-shell">
     <div class="spark-inspector-header" id="spark-inspector-handle" title="Drag to move">
       <div class="spark-inspector-title">
-        <span class="spark-inspector-badge">S</span>
+        <button type="button" id="spark-inspector-badge-toggle" class="spark-inspector-badge spark-inspector-badge-toggle" aria-label="Minimize toolbar">S</button>
         <div style="min-width:0;">
           <strong class="spark-inspector-name">Spark Inspector</strong>
           <div class="spark-inspector-summary">{$totalMs} ms • {$queries} queries • {$exceptions} exceptions</div>
         </div>
       </div>
       <div class="spark-inspector-controls">
-        <button type="button" id="spark-inspector-minimize" class="spark-inspector-button" aria-label="Minimize toolbar">Minimize</button>
         <button type="button" id="spark-inspector-toggle" class="spark-inspector-button" aria-label="Toggle compact mode">Compact</button>
         <a href="{$href}" class="spark-inspector-open">Open</a>
       </div>
@@ -609,7 +611,7 @@ class SparkInspector
       <span style="color:#6b7280;font-size:11px;">Drag the header to float this widget.</span>
     </div>
     <div class="spark-inspector-minimized" id="spark-inspector-minimized">
-      <button type="button" id="spark-inspector-restore" class="spark-inspector-minimized-button" aria-label="Restore toolbar">
+      <button type="button" id="spark-inspector-badge-restore" class="spark-inspector-minimized-button" aria-label="Restore toolbar">
         <span class="spark-inspector-badge">S</span>
       </button>
     </div>
@@ -625,8 +627,8 @@ class SparkInspector
   toolbar.dataset.ready = 'true';
 
   var toggle = document.getElementById('spark-inspector-toggle');
-  var minimize = document.getElementById('spark-inspector-minimize');
-  var restore = document.getElementById('spark-inspector-restore');
+  var badgeToggle = document.getElementById('spark-inspector-badge-toggle');
+  var badgeRestore = document.getElementById('spark-inspector-badge-restore');
   var handle = document.getElementById('spark-inspector-handle');
   var storageKey = 'spark-inspector-toolbar';
   var defaultState = window.innerWidth <= 900 ? 'compact' : 'expanded';
@@ -644,11 +646,6 @@ class SparkInspector
 
     if (toggle) {
       toggle.textContent = toolbar.dataset.state === 'compact' ? 'Expand' : 'Compact';
-      toggle.style.display = toolbar.dataset.state === 'minimized' ? 'none' : '';
-    }
-
-    if (minimize) {
-      minimize.style.display = toolbar.dataset.state === 'minimized' ? 'none' : '';
     }
   }
 
@@ -704,8 +701,8 @@ class SparkInspector
     });
   }
 
-  if (minimize) {
-    minimize.addEventListener('click', function (event) {
+  if (badgeToggle) {
+    badgeToggle.addEventListener('click', function (event) {
       event.preventDefault();
       event.stopPropagation();
       prefs.state = 'minimized';
@@ -717,8 +714,8 @@ class SparkInspector
     });
   }
 
-  if (restore) {
-    restore.addEventListener('click', function (event) {
+  if (badgeRestore) {
+    badgeRestore.addEventListener('click', function (event) {
       event.preventDefault();
       event.stopPropagation();
       prefs.state = 'expanded';
