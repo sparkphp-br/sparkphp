@@ -1,0 +1,62 @@
+@title('Pricing')
+@bodyClass('starter-saas-pricing')
+
+<style>
+    .starter-saas-pricing .shell {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 2rem 1.25rem 4rem;
+    }
+
+    .starter-saas-pricing .plans {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 1rem;
+        margin-top: 2rem;
+    }
+
+    .starter-saas-pricing .plan {
+        border: 1px solid var(--border-soft);
+        background: var(--surface-1);
+        border-radius: 1.25rem;
+        box-shadow: var(--shadow-soft);
+        padding: 1.35rem;
+    }
+
+    .starter-saas-pricing .plan h1 {
+        margin: 0 0 .35rem;
+        font-size: 1.5rem;
+    }
+
+    .starter-saas-pricing .price {
+        font-size: 2rem;
+        letter-spacing: -.04em;
+        margin: .25rem 0 1rem;
+    }
+
+    .starter-saas-pricing ul {
+        padding-left: 1rem;
+        color: var(--text-secondary);
+        line-height: 1.7;
+    }
+</style>
+
+<div class="shell">
+    <h1>Pricing base do starter SaaS</h1>
+    <p>Substitua os planos de exemplo pelos seus e mantenha a operação do produto centrada no CLI e nos defaults do Spark.</p>
+
+    <section class="plans">
+        @foreach($plans as $plan)
+            <article class="plan">
+                <h1>{{ $plan['name'] }}</h1>
+                <div class="price">{{ $plan['price'] }}</div>
+                <p>{{ $plan['tag'] }}</p>
+                <ul>
+                    @foreach($plan['features'] as $feature)
+                        <li>{{ $feature }}</li>
+                    @endforeach
+                </ul>
+            </article>
+        @endforeach
+    </section>
+</div>

@@ -276,6 +276,44 @@ PHP
         $this->assertMatchesRegularExpression('/^APP_KEY=[a-f0-9]{32}$/m', (string) file_get_contents($target . '/.env'));
     }
 
+    public function testStarterListCommandExposesFirstPartyCatalog(): void
+    {
+        $result = $this->runSpark(['starter:list', '--json']);
+        $payload = json_decode($result['output'], true);
+
+        $this->assertSame(0, $result['exit_code'], $result['output']);
+        $this->assertIsArray($payload);
+        $this->assertContains('api', array_column($payload['starters'], 'key'));
+        $this->assertContains('saas', array_column($payload['starters'], 'key'));
+        $this->assertContains('admin', array_column($payload['starters'], 'key'));
+        $this->assertContains('docs', array_column($payload['starters'], 'key'));
+    }
+
+    public function testNewCommandCanApplyStarterPreset(): void
+    {
+        $result = $this->runSpark(['new', 'api-app', '--starter=api', '--json']);
+        $payload = json_decode($result['output'], true);
+        $target = $this->basePath . '/api-app';
+
+        $this->assertSame(0, $result['exit_code'], $result['output']);
+        $this->assertIsArray($payload);
+        $this->assertSame('api', $payload['starter']['key']);
+        $this->assertFileExists($target . '/.spark-starter');
+        $this->assertStringContainsString("redirect('/api')", (string) file_get_contents($target . '/app/routes/index.php'));
+        $this->assertFileExists($target . '/app/routes/api/customers.php');
+    }
+
+    public function testInitCommandCanApplyStarterPresetToCurrentProject(): void
+    {
+        $result = $this->runSpark(['init', '--starter=docs', '--force']);
+
+        $this->assertSame(0, $result['exit_code'], $result['output']);
+        $this->assertFileExists($this->basePath . '/.spark-starter');
+        $this->assertStringContainsString('"key": "docs"', (string) file_get_contents($this->basePath . '/.spark-starter'));
+        $this->assertStringContainsString("redirect('/documents')", (string) file_get_contents($this->basePath . '/app/routes/index.php'));
+        $this->assertFileExists($this->basePath . '/docs/20-editorial-workflow.md');
+    }
+
     public function testUpgradeCommandAuditsAndSyncsCurrentProjectScaffold(): void
     {
         $this->deleteDirectory($this->basePath . '/app/ai/tools');

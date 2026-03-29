@@ -4,7 +4,7 @@
 
 Baseline atual: PHP 8.3+, SQLite 3.35+, MySQL 8.0+ e PostgreSQL 13+.
 
-Versao publicada atual: `0.7.0` (`0.7.x`). O historico de releases fica em
+Versao publicada atual: `0.8.0` (`0.8.x`). O historico de releases fica em
 `CHANGELOG.md` na raiz do projeto.
 
 ---
@@ -32,6 +32,7 @@ Versao publicada atual: `0.7.0` (`0.7.x`). O historico de releases fica em
 | 17 | [AI Conventions](17-ai-conventions.md)         | `app/ai/*`, prompts nomeados, tools file-based e structured output |
 | 18 | [Semantic Search & Retrieval](18-search.md)    | Busca vetorial, `pgvector`, retrieval em `ai()` e fluxo de RAG curto |
 | 19 | [AI Observability](19-ai-observability.md)     | Inspector, mascaramento de traces, AI status e smoke test     |
+| 20 | [Starter Kits](20-starter-kits.md)             | Presets first-party para API, SaaS, admin e documentacao      |
 
 ---
 
@@ -48,6 +49,9 @@ cp .env.example .env
 
 # 3. Rode
 php spark serve
+
+# Ou gere um projeto novo ja com starter first-party
+php spark new ../meu-saas --starter=saas
 ```
 
 Acesse `http://localhost:8000` — pronto.

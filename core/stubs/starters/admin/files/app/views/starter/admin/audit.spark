@@ -1,0 +1,37 @@
+@title('Audit Trail')
+@bodyClass('starter-admin-audit')
+
+<style>
+    .starter-admin-audit .shell {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 2rem 1.25rem 4rem;
+    }
+
+    .starter-admin-audit .event {
+        border: 1px solid var(--border-soft);
+        background: var(--surface-1);
+        border-radius: 1rem;
+        box-shadow: var(--shadow-soft);
+        padding: 1rem 1.1rem;
+        margin-top: 1rem;
+    }
+
+    .starter-admin-audit .event time {
+        color: var(--brand);
+        font-weight: 700;
+    }
+</style>
+
+<div class="shell">
+    <h1>Auditoria operacional</h1>
+    <p>Use esse fluxo como base para logs de negócio, eventos críticos e trilhas internas.</p>
+
+    @foreach($events as $event)
+        <article class="event">
+            <time>{{ $event['time'] }}</time>
+            <h2>{{ $event['label'] }}</h2>
+            <p>{{ $event['copy'] }}</p>
+        </article>
+    @endforeach
+</div>

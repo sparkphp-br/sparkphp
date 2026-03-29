@@ -2,6 +2,24 @@
 
 Todas as mudancas publicas relevantes do SparkPHP passam a ser registradas aqui.
 
+## [0.8.0] - 2026-03-29
+
+### Added
+
+- starter kits first-party versionados no runtime com presets `api`, `saas`, `admin` e `docs`.
+- comando `php spark starter:list` para listar o catalogo local de starters em modo humano ou JSON.
+- suporte a `php spark new --starter=...` para scaffoldar projetos novos ja com o preset aplicado.
+- suporte a `php spark init --starter=...` para aplicar um starter ao projeto atual quando desejado.
+- marcador `.spark-starter` para registrar o preset aplicado no projeto.
+- nova documentacao dedicada para starter kits em `docs/20-starter-kits.md`.
+
+### Changed
+
+- `ProjectScaffolder` agora descobre e aplica overlays versionados em `core/stubs/starters`.
+- `php spark about` e `php spark upgrade` passaram a exibir o starter atual do projeto.
+- landing, docs e fluxo de instalacao agora tratam starter kits como parte oficial do produto.
+- versao publicada do framework avancou para `0.8.0`.
+
 ## [0.7.0] - 2026-03-29
 
 ### Added

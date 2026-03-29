@@ -2,7 +2,7 @@
 
 Esta pagina define a politica publica de versionamento, compatibilidade, suporte e deprecacoes do SparkPHP.
 
-Linha publicada atual: `0.7.0` (`0.7.x`).
+Linha publicada atual: `0.8.0` (`0.8.x`).
 
 ## Estado atual do projeto
 
@@ -53,6 +53,13 @@ Toda release publica relevante tambem deve atualizar `CHANGELOG.md` na raiz do p
 
 Esse arquivo e o historico humano de produto, enquanto `VERSION` continua sendo a
 fonte unica do numero publicado no runtime.
+
+### Metadados de starter kit
+
+Quando o projeto recebe um preset first-party, o Spark tambem grava `.spark-starter`
+na raiz. Esse marcador registra qual starter foi aplicado e em qual versao do
+framework isso aconteceu. Ele nao substitui `VERSION`, mas ajuda CLI e diagnosticos a
+expor o shape inicial do produto.
 
 ## Politica de suporte
 

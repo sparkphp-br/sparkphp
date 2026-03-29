@@ -198,7 +198,7 @@ Sempre analise os seguintes documentos (vão criar uma orientação melhor do pr
   - Adicionar comandos como `spark doctor`, `spark new`, `spark upgrade` e geração de spec
   - Tornar o CLI a interface principal de setup, diagnóstico e evolução do projeto
 
-- [ ] Task 8.2 — Starter kits first-party
+- [x] Task 8.2 — Starter kits first-party
   - Criar presets para API, SaaS, painel administrativo e documentação
   - Garantir que cada starter kit preserve a filosofia zero-config do SparkPHP
 

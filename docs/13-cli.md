@@ -20,9 +20,12 @@ php spark <comando> [opcoes]
 | `php spark serve --port=3000` | Com porta customizada                         |
 | `php spark serve --dry-run` | Mostra o banner/configuracao sem abrir o servidor |
 | `php spark init`     | Inicializa um novo projeto (copia .env, cria diretorios, inclui `app/ai/*`) |
+| `php spark init --starter=docs --force` | Aplica um starter ao projeto atual |
 | `php spark new ../meu-app` | Cria um projeto novo a partir do scaffold atual do SparkPHP |
+| `php spark new ../meu-app --starter=saas` | Cria projeto novo ja com preset first-party |
 | `php spark upgrade`  | Audita o scaffold do projeto atual                     |
 | `php spark upgrade --sync` | Sincroniza partes seguras do scaffold e do `.env` |
+| `php spark starter:list` | Lista os starter kits first-party versionados no runtime |
 | `php spark version`  | Exibe a versao atual do framework e a release line     |
 | `php spark about`    | Exibe diagnosticos do ambiente, PHP, extensoes, banco  |
 | `php spark benchmark`| Roda benchmark de performance do framework             |
@@ -142,6 +145,8 @@ rapidamente, o CLI pode scaffoldar um app inteiro:
 
 ```bash
 php spark new ../meu-novo-app
+php spark new ../minha-api --starter=api
+php spark new ../meu-saas --starter=saas
 ```
 
 O comando:
@@ -157,10 +162,37 @@ Variantes:
 php spark new ../meu-novo-app --force
 php spark new ../meu-novo-app --no-init
 php spark new ../meu-novo-app --json
+php spark new ../meu-novo-app --starter=admin
 ```
 
 Use `--no-init` quando quiser apenas copiar o scaffold e decidir depois quando gerar
 `.env`, `APP_KEY` e diretorios de runtime.
+
+### Catalogo de starter kits
+
+Os starters first-party do Spark vivem dentro do proprio runtime, entao o catalogo
+sempre acompanha a versao do framework instalada no projeto atual.
+
+```bash
+php spark starter:list
+php spark starter:list --json
+```
+
+Starters atuais:
+
+- `api`: entrada em `/api`, exemplos REST e DX JSON-first
+- `saas`: landing + pricing + dashboard inicial
+- `admin`: painel interno com visao operacional
+- `docs`: portal de documentacao com raiz em `/documents`
+
+Para aplicar um preset em um projeto ja existente:
+
+```bash
+php spark init --starter=docs --force
+```
+
+Use `--force` quando o starter precisar sobrescrever arquivos base como
+`app/routes/index.php`.
 
 ### Fluxo de desenvolvimento
 
@@ -189,12 +221,16 @@ php spark serve --dry-run
 
 # Criar um projeto novo a partir do scaffold atual
 php spark new ../cliente-acme
+php spark new ../painel-interno --starter=admin
 
 # Auditar o projeto atual contra o scaffold publicado
 php spark upgrade
 
 # Aplicar sincronizacao segura de dirs/.env
 php spark upgrade --sync
+
+# Ver o catalogo local de starters
+php spark starter:list
 
 # Gerar spec OpenAPI da API
 php spark api:spec
@@ -343,8 +379,8 @@ php spark --version
 php spark -V
 
 # Saida:
-#   SparkPHP v0.7.0 (0.7.x)
-#   SparkPHP environment report  v0.7.0
+#   SparkPHP v0.8.0 (0.8.x)
+#   SparkPHP environment report  v0.8.0
 #   PHP 8.3.0
 #   Environment: production
 #   Database: mysql (sparkphp@localhost)

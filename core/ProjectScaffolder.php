@@ -2,6 +2,8 @@
 
 class ProjectScaffolder
 {
+    private const STARTERS_ROOT = 'core/stubs/starters';
+
     private const PROJECT_TEMPLATE_FILES = [
         '.env.example',
         '.gitignore',
@@ -33,7 +35,7 @@ class ProjectScaffolder
         $this->basePath = rtrim($basePath, '/\\');
     }
 
-    public function initialize(bool $force = false): array
+    public function initialize(bool $force = false, ?string $starter = null): array
     {
         $messages = [];
 
@@ -54,6 +56,11 @@ class ProjectScaffolder
             $messages[] = "{$createdDirs} project directories prepared";
         }
 
+        if ($starter !== null) {
+            $starterResult = $this->applyStarter($starter, $force);
+            $messages = array_merge($messages, $starterResult['messages']);
+        }
+
         if ($this->ensureDatabaseSeeder()) {
             $messages[] = 'DatabaseSeeder scaffolded';
         }
@@ -70,7 +77,7 @@ class ProjectScaffolder
         return ['messages' => $messages];
     }
 
-    public function createProject(string $targetPath, bool $force = false, bool $initialize = true): array
+    public function createProject(string $targetPath, bool $force = false, bool $initialize = true, ?string $starter = null): array
     {
         $targetPath = rtrim($targetPath, '/\\');
         if ($targetPath === '') {
@@ -118,6 +125,12 @@ class ProjectScaffolder
             @chmod($targetPath . '/spark', 0755);
         }
 
+        $starterResult = null;
+        if ($starter !== null) {
+            $starterResult = (new self($targetPath))->applyStarter($starter, true);
+            $messages = array_merge($messages, $starterResult['messages']);
+        }
+
         if ($initialize) {
             $result = (new self($targetPath))->initialize(false);
             $messages = array_merge($messages, $result['messages']);
@@ -128,13 +141,168 @@ class ProjectScaffolder
             'copied_files' => $copiedFiles,
             'copied_directories' => $copiedDirectories,
             'initialized' => $initialize,
+            'starter' => $starterResult['manifest'] ?? null,
             'messages' => $messages,
         ];
+    }
+
+    public function listStarters(): array
+    {
+        $root = $this->starterRoot();
+        if (!is_dir($root)) {
+            return [];
+        }
+
+        $starters = [];
+        foreach (glob($root . '/*/manifest.php') ?: [] as $manifestPath) {
+            $manifest = require $manifestPath;
+            if (!is_array($manifest)) {
+                continue;
+            }
+
+            $manifest['key'] ??= basename(dirname($manifestPath));
+            $manifest['name'] ??= ucfirst((string) $manifest['key']);
+            $manifest['description'] ??= '';
+            $manifest['entrypoint'] ??= '/';
+            $manifest['sort'] ??= 999;
+            $manifest['focus'] = array_values(array_map('strval', $manifest['focus'] ?? []));
+            $manifest['path'] = dirname($manifestPath);
+            $starters[] = $manifest;
+        }
+
+        usort($starters, function (array $a, array $b): int {
+            $sort = ($a['sort'] <=> $b['sort']);
+            if ($sort !== 0) {
+                return $sort;
+            }
+
+            return strcmp((string) $a['name'], (string) $b['name']);
+        });
+
+        return array_map(function (array $starter): array {
+            unset($starter['path'], $starter['sort']);
+            return $starter;
+        }, $starters);
+    }
+
+    public function applyStarter(string $starter, bool $force = false): array
+    {
+        $manifest = $this->starterManifest($starter);
+        $filesPath = $this->starterFilesPath($manifest['key']);
+
+        if (!is_dir($filesPath)) {
+            throw new RuntimeException("Starter [{$manifest['key']}] does not include a files/ directory.");
+        }
+
+        $copiedFiles = 0;
+        $createdDirectories = 0;
+
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($filesPath, FilesystemIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::SELF_FIRST
+        );
+
+        foreach ($iterator as $item) {
+            $relativePath = str_replace('\\', '/', $iterator->getSubPathName());
+            if ($relativePath === '') {
+                continue;
+            }
+
+            $target = $this->basePath . '/' . $relativePath;
+
+            if ($item->isDir()) {
+                $created = false;
+                if (!is_dir($target)) {
+                    if (!mkdir($target, 0755, true) && !is_dir($target)) {
+                        throw new RuntimeException("Unable to create starter directory [{$target}].");
+                    }
+
+                    $created = true;
+                }
+
+                if ($created) {
+                    $createdDirectories++;
+                }
+                continue;
+            }
+
+            if (is_file($target) && !$force) {
+                $sourceContents = (string) file_get_contents($item->getPathname());
+                $targetContents = (string) file_get_contents($target);
+
+                if ($sourceContents !== $targetContents) {
+                    throw new RuntimeException(
+                        "Starter [{$manifest['key']}] would overwrite [{$relativePath}]. Use --force to apply it."
+                    );
+                }
+            }
+
+            $this->copyFile($item->getPathname(), $target);
+            $copiedFiles++;
+        }
+
+        $this->writeStarterMarker($manifest['key']);
+
+        $messages = [
+            "starter [{$manifest['key']}] applied",
+            "{$copiedFiles} starter file(s) synced",
+        ];
+
+        if ($createdDirectories > 0) {
+            $messages[] = "{$createdDirectories} starter folder(s) prepared";
+        }
+
+        return [
+            'starter' => $manifest['key'],
+            'manifest' => $manifest,
+            'copied_files' => $copiedFiles,
+            'created_directories' => $createdDirectories,
+            'messages' => $messages,
+        ];
+    }
+
+    public function currentStarter(): ?array
+    {
+        $marker = $this->basePath . '/.spark-starter';
+        if (!is_file($marker)) {
+            return null;
+        }
+
+        $raw = trim((string) file_get_contents($marker));
+        if ($raw === '') {
+            return null;
+        }
+
+        $payload = json_decode($raw, true);
+        if (!is_array($payload)) {
+            $payload = ['key' => $raw];
+        }
+
+        $key = $payload['key'] ?? null;
+        if (!is_string($key) || $key === '') {
+            return null;
+        }
+
+        try {
+            $manifest = $this->starterManifest($key);
+        } catch (RuntimeException) {
+            $manifest = [
+                'key' => $key,
+                'name' => ucfirst($key),
+                'description' => 'Starter marker without a matching local manifest.',
+                'entrypoint' => '/',
+                'focus' => [],
+            ];
+        }
+
+        return array_merge($manifest, $payload);
     }
 
     public function audit(): array
     {
         require_once __DIR__ . '/Version.php';
+
+        $starter = $this->currentStarter();
 
         $missingDirectories = [];
         foreach ($this->directoryManifest() as $directory) {
@@ -161,6 +329,9 @@ class ProjectScaffolder
             'base_path' => $this->basePath,
             'spark_version' => SparkVersion::current($this->basePath),
             'spark_release_line' => SparkVersion::releaseLine(SparkVersion::current($this->basePath)),
+            'starter' => $starter['key'] ?? 'base',
+            'starter_name' => $starter['name'] ?? 'Base',
+            'starter_entrypoint' => $starter['entrypoint'] ?? '/',
             'env_exists' => file_exists($this->basePath . '/.env'),
             'env_example_exists' => file_exists($this->basePath . '/.env.example'),
             'app_key_status' => $appKeyStatus,
@@ -508,5 +679,42 @@ PHP
         if (!copy($source, $destination)) {
             throw new RuntimeException("Unable to copy [{$source}] to [{$destination}].");
         }
+    }
+
+    private function starterRoot(): string
+    {
+        return $this->basePath . '/' . self::STARTERS_ROOT;
+    }
+
+    private function starterManifest(string $starter): array
+    {
+        foreach ($this->listStarters() as $manifest) {
+            if (($manifest['key'] ?? null) === $starter) {
+                return $manifest;
+            }
+        }
+
+        throw new RuntimeException("Unknown starter [{$starter}]. Run `php spark starter:list` to see the catalog.");
+    }
+
+    private function starterFilesPath(string $starter): string
+    {
+        return $this->starterRoot() . '/' . $starter . '/files';
+    }
+
+    private function writeStarterMarker(string $starter): void
+    {
+        require_once __DIR__ . '/Version.php';
+
+        $payload = [
+            'key' => $starter,
+            'spark_version' => SparkVersion::current($this->basePath),
+            'applied_at' => date(DATE_ATOM),
+        ];
+
+        file_put_contents(
+            $this->basePath . '/.spark-starter',
+            json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . PHP_EOL
+        );
     }
 }

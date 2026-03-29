@@ -1,0 +1,60 @@
+@title('Dashboard')
+@bodyClass('starter-saas-dashboard')
+
+<style>
+    .starter-saas-dashboard .shell {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 2rem 1.25rem 4rem;
+    }
+
+    .starter-saas-dashboard .stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1rem;
+        margin-top: 1.5rem;
+    }
+
+    .starter-saas-dashboard .card {
+        border: 1px solid var(--border-soft);
+        background: var(--surface-1);
+        border-radius: 1.25rem;
+        box-shadow: var(--shadow-soft);
+        padding: 1.25rem;
+    }
+
+    .starter-saas-dashboard .card strong {
+        display: block;
+        font-size: 1.7rem;
+        letter-spacing: -.04em;
+    }
+
+    .starter-saas-dashboard .tasks {
+        margin-top: 2rem;
+        color: var(--text-secondary);
+        line-height: 1.75;
+    }
+</style>
+
+<div class="shell">
+    <h1>Dashboard inicial</h1>
+    <p>Esse painel existe para você substituir sem dó. O papel do starter é encurtar o primeiro deploy e manter a estrutura previsível.</p>
+
+    <section class="stats">
+        @foreach($stats as $stat)
+            <article class="card">
+                <strong>{{ $stat['value'] }}</strong>
+                <span>{{ $stat['label'] }}</span>
+            </article>
+        @endforeach
+    </section>
+
+    <section class="tasks">
+        <h2>Checklist do time</h2>
+        <ul>
+            @foreach($tasks as $task)
+                <li>{{ $task }}</li>
+            @endforeach
+        </ul>
+    </section>
+</div>

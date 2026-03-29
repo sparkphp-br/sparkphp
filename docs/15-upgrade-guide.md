@@ -37,6 +37,9 @@ Se quiser um diagnostico rapido antes de seguir manualmente, rode:
 php spark upgrade
 ```
 
+Se o projeto nasceu de um starter first-party, o auditor tambem informa qual preset foi
+aplicado via `.spark-starter`.
+
 ### 3. Revise convencoes do framework
 
 Cheque especialmente:
@@ -162,6 +165,24 @@ Migracao recomendada:
 3. rode `php spark ai:status`
 4. rode `php spark ai:smoke-test`
 5. revise `/_spark` para validar previews, tokens e custo
+
+### Starter kits first-party
+
+O Spark agora inclui presets versionados para `api`, `saas`, `admin` e `docs`.
+
+Impacto:
+
+- `php spark new --starter=...` agora consegue gerar o scaffold ja com um preset de produto
+- `php spark init --starter=... --force` permite aplicar um starter a um projeto atual
+- `php spark starter:list` expoe o catalogo local do runtime
+- um arquivo `.spark-starter` passa a registrar o preset aplicado
+
+Migracao recomendada:
+
+1. rode `php spark starter:list`
+2. escolha um preset apenas para projetos novos ou para bases ainda bem iniciais
+3. se for aplicar em um projeto existente, revise antes os arquivos que o starter pode sobrescrever
+4. use `php spark init --starter=<preset> --force` apenas quando quiser realmente trocar a estrutura base
 
 ### Baseline moderna do framework
 

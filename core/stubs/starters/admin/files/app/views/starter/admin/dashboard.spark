@@ -1,0 +1,69 @@
+@title('Admin Dashboard')
+@bodyClass('starter-admin')
+
+<style>
+    .starter-admin .shell {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 2rem 1.25rem 4rem;
+    }
+
+    .starter-admin .hero,
+    .starter-admin .card,
+    .starter-admin .shortcut {
+        border: 1px solid var(--border-soft);
+        background: var(--surface-1);
+        border-radius: 1.25rem;
+        box-shadow: var(--shadow-soft);
+    }
+
+    .starter-admin .hero {
+        padding: 1.5rem;
+    }
+
+    .starter-admin .stats,
+    .starter-admin .shortcuts {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+
+    .starter-admin .card,
+    .starter-admin .shortcut {
+        padding: 1.2rem;
+    }
+
+    .starter-admin .card strong {
+        display: block;
+        font-size: 1.7rem;
+        letter-spacing: -.04em;
+    }
+
+    .starter-admin .shortcut {
+        text-decoration: none;
+        color: inherit;
+    }
+</style>
+
+<div class="shell">
+    <section class="hero">
+        <h1>Painel administrativo</h1>
+        <p>Starter limpo para backoffice. O próximo passo normal aqui é adicionar `guard('auth')` nas rotas ou um `_middleware.php` herdado em `app/routes/admin/`.</p>
+    </section>
+
+    <section class="stats">
+        @foreach($stats as $stat)
+            <article class="card">
+                <strong>{{ $stat['value'] }}</strong>
+                <span>{{ $stat['label'] }}</span>
+            </article>
+        @endforeach
+    </section>
+
+    <section class="shortcuts">
+        @foreach($links as $link)
+            <a href="{{ $link['href'] }}" class="shortcut">{{ $link['label'] }}</a>
+        @endforeach
+    </section>
+</div>

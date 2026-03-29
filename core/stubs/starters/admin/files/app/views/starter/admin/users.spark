@@ -1,0 +1,57 @@
+@title('Admin Users')
+@bodyClass('starter-admin-users')
+
+<style>
+    .starter-admin-users .shell {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 2rem 1.25rem 4rem;
+    }
+
+    .starter-admin-users table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 1.25rem;
+        border: 1px solid var(--border-soft);
+        border-radius: 1rem;
+        overflow: hidden;
+        box-shadow: var(--shadow-soft);
+    }
+
+    .starter-admin-users th,
+    .starter-admin-users td {
+        padding: .95rem 1rem;
+        text-align: left;
+        border-bottom: 1px solid var(--border-soft);
+    }
+
+    .starter-admin-users tbody tr:last-child td {
+        border-bottom: none;
+    }
+</style>
+
+<div class="shell">
+    <h1>Usuários</h1>
+    <p>Exemplo de tabela interna para ser trocada pelo seu Model real, paginação e policies.</p>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Nome</th>
+                <th>E-mail</th>
+                <th>Papel</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach($users as $user)
+                <tr>
+                    <td>{{ $user['name'] }}</td>
+                    <td>{{ $user['email'] }}</td>
+                    <td>{{ $user['role'] }}</td>
+                    <td>{{ $user['status'] }}</td>
+                </tr>
+            @endforeach
+        </tbody>
+    </table>
+</div>

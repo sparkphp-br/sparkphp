@@ -36,6 +36,7 @@ Algumas frentes agora sao tratadas como contratos publicos do produto:
 
 - benchmark versionado via `php spark benchmark`
 - CLI de produto (`php spark new`, `php spark upgrade`, `php spark version`)
+- catalogo de starter kits (`php spark starter:list`, `php spark new --starter=...`, `php spark init --starter=...`)
 - observabilidade profunda do `SparkInspector` (pipelines, gargalos, queue/cache/request)
 - surfaces publicas de versao (`VERSION`, CLI e relatorios gerados)
 - AI file-based (`app/ai/*`), prompts nomeados, structured output e helpers publicos

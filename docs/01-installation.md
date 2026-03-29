@@ -45,11 +45,23 @@ rapidamente, tambem pode usar o CLI:
 
 ```bash
 php spark new ../meu-novo-projeto
+php spark new ../minha-api --starter=api
+php spark new ../meu-painel --starter=admin
 ```
 
 Acesse `http://localhost:8000` e voce vera a pagina inicial do SparkPHP.
 Ao subir com `php spark serve`, o banner do servidor tambem mostra a versao atual
 publicada do framework lida de `VERSION`.
+
+Para ver o catalogo oficial de presets first-party no runtime atual:
+
+```bash
+php spark starter:list
+```
+
+Quando um starter e aplicado, o Spark grava um marcador `.spark-starter` na raiz do
+projeto. Esse arquivo registra qual preset foi usado e em qual versao do framework ele
+foi aplicado.
 
 ## Porta customizada
 
@@ -98,7 +110,8 @@ meu-projeto/
 O arquivo `VERSION` na raiz e a fonte de verdade da versao publicada do SparkPHP no
 projeto. Ele alimenta `php spark version`, `php spark about`, a rota raiz padrao e a
 spec OpenAPI gerada pelo CLI. O `CHANGELOG.md` registra o historico humano de produto
-da linha publicada.
+da linha publicada. O arquivo `.spark-starter`, quando existir, registra o preset
+first-party aplicado ao projeto.
 
 Esse mesmo bootstrap tambem alimenta os comandos `php spark ai:status` e
 `php spark ai:smoke-test`, usados para diagnosticar a camada de AI do projeto sem
