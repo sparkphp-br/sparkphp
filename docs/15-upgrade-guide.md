@@ -123,6 +123,33 @@ Impacto:
 Se o projeto ja tinha retrieval artesanal, a migracao recomendada e mover primeiro a
 busca para `QueryBuilder`, depois substituir o glue code por `ai()->retrieve(...)`.
 
+### AI observavel por default
+
+O Spark agora instrumenta chamadas de AI automaticamente no Inspector:
+
+- `text()`
+- `embeddings()`
+- `image()`
+- `audio()`
+- `agent()`
+- `retrieve()`
+
+Impacto:
+
+- novas configuracoes opcionais apareceram no `.env`: `SPARK_AI_MASK` e
+  `SPARK_AI_TRACE_PREVIEW`
+- o CLI ganhou `php spark ai:status` e `php spark ai:smoke-test`
+- o driver `fake` passa a expor `usage` e `cost_usd`, o que pode afetar suites que
+  validavam `meta` de forma muito estrita
+
+Migracao recomendada:
+
+1. habilite o Inspector no ambiente de desenvolvimento
+2. confirme `SPARK_AI_MASK=true`
+3. rode `php spark ai:status`
+4. rode `php spark ai:smoke-test`
+5. revise `/_spark` para validar previews, tokens e custo
+
 ### Baseline moderna do framework
 
 A baseline oficial do Spark passou a ser:

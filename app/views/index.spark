@@ -610,8 +610,8 @@
                 <div class="feature-card__icon">🐞</div>
                 <h3>Spark Inspector</h3>
                 <p>
-                    Debugger nativo que rastreia pipelines completos de request, cache e queue,
-                    alem de queries, memoria, logs e bottlenecks — configuravel via <code>.env</code>.
+                    Debugger nativo que rastreia pipelines completos de request, cache, queue e AI,
+                    com queries, memoria, logs, tokens, custo e bottlenecks — configuravel via <code>.env</code>.
                 </p>
             </article>
             </a>
@@ -633,7 +633,7 @@
                 <h3>AI Unificada</h3>
                 <p>
                     Uma unica entrada com <code>ai()</code> para texto, embeddings, imagem, audio,
-                    agentes e retrieval, ligada ao banco com vector search e RAG curto.
+                    agentes e retrieval, ligada ao banco com vector search, RAG curto e observabilidade no Inspector.
                 </p>
             </article>
             </a>
@@ -714,7 +714,7 @@
             <a href="{{ route('docs.show', ['slug' => '18-search']) }}" class="capability-card-link">
             <article class="capability-card">
                 <strong>AI sem fragmentação</strong>
-                <p>Use <code>ai()</code> com retrieval, vector search no banco e contexto pronto para RAG, sem sair da linguagem do framework.</p>
+                <p>Use <code>ai()</code> com retrieval, vector search no banco, contexto pronto para RAG e traces nativos com tokens e custo.</p>
                 <code>ai()->retrieve('...')->from('documents')</code>
             </article>
             </a>

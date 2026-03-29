@@ -8,16 +8,23 @@ final class AiSdkTest extends TestCase
 {
     private string $basePath;
     private array $envBackup = [];
+    private array $serverBackup = [];
+    private array $getBackup = [];
+    private array $postBackup = [];
 
     protected function setUp(): void
     {
         parent::setUp();
 
         $this->envBackup = $_ENV;
+        $this->serverBackup = $_SERVER;
+        $this->getBackup = $_GET;
+        $this->postBackup = $_POST;
         $_ENV['AI_DRIVER'] = 'fake';
 
         $this->basePath = sys_get_temp_dir() . '/sparkphp-ai-' . bin2hex(random_bytes(4));
         mkdir($this->basePath . '/storage/cache/app', 0777, true);
+        mkdir($this->basePath . '/storage/inspector', 0777, true);
         mkdir($this->basePath . '/storage/logs', 0777, true);
         mkdir($this->basePath . '/storage/sessions', 0777, true);
         mkdir($this->basePath . '/public', 0777, true);
@@ -35,6 +42,9 @@ final class AiSdkTest extends TestCase
     protected function tearDown(): void
     {
         $_ENV = $this->envBackup;
+        $_SERVER = $this->serverBackup;
+        $_GET = $this->getBackup;
+        $_POST = $this->postBackup;
         $this->deleteDirectory($this->basePath);
 
         parent::tearDown();
@@ -221,6 +231,77 @@ PHP
         $this->assertArrayHasKey('qualified', $agent->structured);
         $this->assertMatchesRegularExpression('/@example\.com$/', $agent->structured['email']);
         $this->assertJson((string) $agent);
+    }
+
+    public function testFakeProviderExposesUsageAndCostMetadata(): void
+    {
+        $client = new AiManager()->driver('fake');
+
+        $text = $client->text('Explique cache.')->generate();
+        $embeddings = $client->embeddings('SparkPHP')->generate();
+        $agent = $client->agent('ops')
+            ->tool('lookupHealth', fn() => ['healthy' => true], 'Health check')
+            ->prompt('Verifique a saude da aplicacao.')
+            ->run();
+
+        $this->assertGreaterThan(0, $text->meta['usage']['total'] ?? 0);
+        $this->assertGreaterThan(0.0, $text->meta['cost_usd'] ?? 0.0);
+        $this->assertGreaterThan(0, $embeddings->meta['usage']['total'] ?? 0);
+        $this->assertGreaterThan(0.0, $embeddings->meta['cost_usd'] ?? 0.0);
+        $this->assertSame(1, $agent->meta['tool_calls'] ?? 0);
+        $this->assertGreaterThan(0, $agent->meta['usage']['total'] ?? 0);
+        $this->assertGreaterThan(0.0, $agent->meta['cost_usd'] ?? 0.0);
+    }
+
+    public function testAiOperationsAreRecordedAutomaticallyBySparkInspector(): void
+    {
+        $_ENV['SPARK_INSPECTOR'] = 'on';
+        $_ENV['SPARK_INSPECTOR_MASK'] = 'false';
+        $_ENV['SPARK_AI_MASK'] = 'true';
+        $_ENV['SPARK_AI_TRACE_PREVIEW'] = '80';
+
+        $_SERVER['REQUEST_METHOD'] = 'GET';
+        $_SERVER['REQUEST_URI'] = '/ai-demo';
+        $_SERVER['HTTP_HOST'] = 'sparkphp.test';
+        $_SERVER['HTTP_ACCEPT'] = 'application/json';
+        $_GET = [];
+        $_POST = [];
+
+        SparkInspector::boot($this->basePath);
+        $request = new Request();
+        SparkInspector::startRequest($request);
+
+        ai()->text('Segredo do cliente: receita mensal')->generate();
+        ai()->agent('support')
+            ->instructions('Nao exponha dados internos.')
+            ->tool('lookupLead', fn(array $arguments) => ['id' => $arguments['id'] ?? null], 'Lead lookup')
+            ->context([
+                'customer' => ['email' => 'ceo@example.com'],
+                'tool_arguments' => ['lookupLead' => ['id' => 7]],
+            ])
+            ->prompt('Analise o lead 7.')
+            ->run();
+
+        $response = Response::json(['ok' => true]);
+        SparkInspector::decorateResponse($response);
+        $headers = $response->getHeaders();
+        SparkInspector::finalizeResponse($response);
+
+        $entry = (new SparkInspectorStorage($this->basePath))->find((string) ($headers['X-Spark-Request-Id'] ?? ''));
+
+        $this->assertIsArray($entry);
+        $this->assertCount(2, $entry['ai']);
+        $this->assertSame(2, $entry['metrics']['ai_ops']);
+        $this->assertSame(1, $entry['metrics']['ai_text_ops']);
+        $this->assertSame(1, $entry['metrics']['ai_agent_ops']);
+        $this->assertSame(1, $entry['metrics']['ai_tool_calls']);
+        $this->assertGreaterThan(0, $entry['metrics']['ai_tokens_total']);
+        $this->assertGreaterThan(0.0, $entry['metrics']['ai_cost_usd']);
+        $this->assertStringContainsString('ai;dur=', $headers['Server-Timing'] ?? '');
+        $this->assertStringContainsString('[masked prompt len=', $entry['ai'][0]['request']['prompt']);
+        $this->assertStringContainsString('[masked text len=', $entry['ai'][0]['response']['text']);
+        $this->assertStringContainsString('[masked instructions len=', $entry['ai'][1]['request']['instructions']);
+        $this->assertSame('2', $entry['pipelines']['ai']['summary']['Ops']);
     }
 
     public function testOperationsFailFastWithoutRequiredInput(): void

@@ -268,6 +268,39 @@ PHP
         $this->assertContains('http.request_json', array_column($payload['scenarios'], 'name'));
     }
 
+    public function testAiCommandsExposeDiagnosticsAndSmokeTests(): void
+    {
+        $status = $this->runSpark(['ai:status', '--json']);
+        $smoke = $this->runSpark(['ai:smoke-test', '--json']);
+        $retrieval = $this->runSpark(['ai:smoke-test', '--capability=retrieval', '--json']);
+
+        $statusPayload = json_decode($status['output'], true);
+        $smokePayload = json_decode($smoke['output'], true);
+        $retrievalPayload = json_decode($retrieval['output'], true);
+        $version = trim((string) file_get_contents(__DIR__ . '/../../VERSION'));
+
+        $this->assertSame(0, $status['exit_code'], $status['output']);
+        $this->assertIsArray($statusPayload);
+        $this->assertSame($version, $statusPayload['spark_version']);
+        $this->assertSame('fake', $statusPayload['driver']);
+        $this->assertSame('fake', $statusPayload['provider']);
+        $this->assertArrayHasKey('inspector', $statusPayload);
+        $this->assertArrayHasKey('ai_preview', $statusPayload['inspector']);
+
+        $this->assertSame(0, $smoke['exit_code'], $smoke['output']);
+        $this->assertIsArray($smokePayload);
+        $this->assertSame($version, $smokePayload['spark_version']);
+        $this->assertSame('fake', $smokePayload['driver']);
+        $this->assertSame('fake', $smokePayload['provider']);
+        $this->assertSame('ok', $smokePayload['capabilities']['text']['status']);
+        $this->assertSame('ok', $smokePayload['capabilities']['agent']['status']);
+        $this->assertGreaterThan(0, $smokePayload['capabilities']['text']['tokens']['total']);
+
+        $this->assertSame(0, $retrieval['exit_code'], $retrieval['output']);
+        $this->assertIsArray($retrievalPayload);
+        $this->assertSame('ok', $retrievalPayload['capabilities']['retrieval']['status']);
+    }
+
     public function testApiSpecCommandGeneratesOpenApiFromRoutesValidationAndResponses(): void
     {
         mkdir($this->basePath . '/app/routes/api', 0777, true);

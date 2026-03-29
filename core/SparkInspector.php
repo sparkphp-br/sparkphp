@@ -529,6 +529,55 @@ class SparkInspector
         ];
     }
 
+    private function addAi(array $payload): void
+    {
+        if (!$this->enabled || $this->context === []) {
+            return;
+        }
+
+        $sanitizedPayload = $this->sanitizeAiTrace($payload);
+        $type = (string) ($payload['type'] ?? 'unknown');
+        $durationMs = round((float) ($payload['duration_ms'] ?? 0.0), 3);
+        $tokens = (array) ($payload['tokens'] ?? []);
+        $cost = (float) ($payload['cost_usd'] ?? 0.0);
+        $toolCalls = (int) ($payload['tool_calls'] ?? 0);
+
+        $this->context['ai'][] = $sanitizedPayload;
+        $this->context['metrics']['ai_ops']++;
+        $this->context['metrics']['ai_ms'] += $durationMs;
+        $this->context['metrics']['ai_tool_calls'] += $toolCalls;
+        $this->context['metrics']['ai_tokens_in'] += (int) ($tokens['input'] ?? 0);
+        $this->context['metrics']['ai_tokens_out'] += (int) ($tokens['output'] ?? 0);
+        $this->context['metrics']['ai_tokens_total'] += (int) ($tokens['total'] ?? 0);
+        $this->context['metrics']['ai_cost_usd'] += $cost;
+
+        match ($type) {
+            'text' => $this->context['metrics']['ai_text_ops']++,
+            'embeddings' => $this->context['metrics']['ai_embedding_ops']++,
+            'image' => $this->context['metrics']['ai_image_ops']++,
+            'audio' => $this->context['metrics']['ai_audio_ops']++,
+            'agent' => $this->context['metrics']['ai_agent_ops']++,
+            'retrieval' => $this->context['metrics']['ai_retrieval_ops']++,
+            default => null,
+        };
+
+        $meta = array_filter([
+            isset($payload['provider']) ? 'provider: ' . $payload['provider'] : null,
+            isset($payload['model']) ? 'model: ' . $payload['model'] : null,
+            ($tokens['total'] ?? 0) > 0 ? 'tokens: ' . $tokens['total'] : null,
+            $toolCalls > 0 ? 'tools: ' . $toolCalls : null,
+            $cost > 0 ? 'cost: $' . number_format($cost, 6, '.', '') : null,
+        ]);
+
+        $this->context['timeline'][] = [
+            'label' => 'ai:' . $type,
+            'type' => 'ai',
+            'duration_ms' => $durationMs,
+            'status' => (string) ($payload['status'] ?? 'ok'),
+            'meta' => implode(' • ', $meta),
+        ];
+    }
+
     private function addDump(string $type, array $values): void
     {
         if (!$this->enabled || $this->context === []) {
@@ -573,7 +622,7 @@ class SparkInspector
 
     private function augmentResponse(Response $response): void
     {
-        if (!$this->enabled || $this->context === []) {
+        if (!$this->enabled || $this->context === [] || $this->finalized) {
             return;
         }
 
@@ -658,6 +707,8 @@ class SparkInspector
         $exceptions = count($this->context['exceptions'] ?? []);
         $queueFailures = (int) ($this->context['metrics']['queue_failed'] ?? 0);
         $queueOps = (int) ($this->context['metrics']['queue_ops'] ?? 0);
+        $aiOps = (int) ($this->context['metrics']['ai_ops'] ?? 0);
+        $aiTokens = (int) ($this->context['metrics']['ai_tokens_total'] ?? 0);
         $cacheHitRate = $this->cacheHitRate($this->context['metrics'] ?? []);
         $summaryParts = [
             $totalMs . ' ms',
@@ -667,6 +718,11 @@ class SparkInspector
 
         if ($queueFailures > 0) {
             $summaryParts[] = $queueFailures . ' queue failures';
+        } elseif ($aiOps > 0) {
+            $summaryParts[] = $aiOps . ' ai ops';
+            if ($aiTokens > 0) {
+                $summaryParts[] = $aiTokens . ' ai tokens';
+            }
         } elseif ($queueOps > 0) {
             $summaryParts[] = $queueOps . ' queue ops';
         }
@@ -742,7 +798,7 @@ class SparkInspector
       <div class="spark-inspector-metric"><strong>Queries</strong><span>{$queries}</span></div>
       <div class="spark-inspector-metric"><strong>Exceptions</strong><span>{$exceptions}</span></div>
       <div class="spark-inspector-metric"><strong>Cache Hit</strong><span>{$cacheHitRate}</span></div>
-      <div class="spark-inspector-metric"><strong>Queue</strong><span>{$queueOps} ops</span></div>
+      <div class="spark-inspector-metric"><strong>AI</strong><span>{$aiOps} ops / {$aiTokens} tokens</span></div>
     </div>
     <div class="spark-inspector-footer">
       <span class="spark-inspector-id">{$id}</span>
@@ -1024,6 +1080,7 @@ HTML;
             'events' => '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
             'mail' => '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>',
             'queue' => '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/></svg>',
+            'ai' => '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v4"/><path d="M12 18v4"/><path d="M4.93 4.93l2.83 2.83"/><path d="M16.24 16.24l2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="M4.93 19.07l2.83-2.83"/><path d="M16.24 7.76l2.83-2.83"/><circle cx="12" cy="12" r="4"/></svg>',
             'dumps' => '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>',
             'exceptions' => '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
         ];
@@ -1043,6 +1100,7 @@ HTML;
             'events' => $this->renderCollectionTab('Events', $entry['events'] ?? []),
             'mail' => $this->renderCollectionTab('Mail', $entry['mail'] ?? []),
             'queue' => $this->renderCollectionTab('Queue', $entry['queue'] ?? []),
+            'ai' => $this->renderCollectionTab('AI', $entry['ai'] ?? []),
             'dumps' => $this->renderCollectionTab('Dumps', $entry['dumps'] ?? []),
             'exceptions' => $this->renderCollectionTab('Exceptions', $entry['exceptions'] ?? []),
         ];
@@ -1132,6 +1190,11 @@ HTML;
         $queueOps = (int) ($metrics['queue_ops'] ?? 0);
         $queueFailed = (int) ($metrics['queue_failed'] ?? 0);
         $queueRetries = (int) ($metrics['queue_retries'] ?? 0);
+        $aiOps = (int) ($metrics['ai_ops'] ?? 0);
+        $aiMs = (float) ($metrics['ai_ms'] ?? 0.0);
+        $aiTokens = (int) ($metrics['ai_tokens_total'] ?? 0);
+        $aiCost = (float) ($metrics['ai_cost_usd'] ?? 0.0);
+        $aiToolCalls = (int) ($metrics['ai_tool_calls'] ?? 0);
 
         $status = (int) ($entry['response']['status'] ?? 0);
         $statusColor = $status >= 500 ? '#dc2626' : ($status >= 400 ? '#d97706' : '#059669');
@@ -1154,6 +1217,11 @@ HTML;
   {$this->metricCard('Queue Ops', (string) $queueOps, '#2563eb', 'queue')}
   {$this->metricCard('Queue Failures', (string) $queueFailed, $queueFailed > 0 ? '#dc2626' : '#2563eb', 'queue')}
   {$this->metricCard('Queue Retries', (string) $queueRetries, $queueRetries > 0 ? '#d97706' : '#2563eb', 'queue')}
+  {$this->metricCard('AI Ops', (string) $aiOps, '#7c3aed', 'ai')}
+  {$this->metricCard('AI Time', number_format($aiMs, 1) . ' ms', '#7c3aed', 'ai')}
+  {$this->metricCard('AI Tokens', (string) $aiTokens, '#9333ea', 'ai')}
+  {$this->metricCard('AI Tool Calls', (string) $aiToolCalls, '#a855f7', 'ai')}
+  {$this->metricCard('AI Cost', '$' . number_format($aiCost, 6, '.', ''), '#9333ea', 'ai')}
   {$this->metricCard('Exceptions', (string) $exceptions, $exColor, 'exceptions')}
   {$this->metricCard('Memory Peak', number_format((float) ($metrics['memory_peak_kb'] ?? 0), 0) . ' KB', '#059669', 'memory')}
 </div>
@@ -1174,6 +1242,7 @@ HTML;
         $requestPipeline = $pipelines['request'] ?? ['summary' => [], 'steps' => []];
         $cachePipeline = $pipelines['cache'] ?? ['summary' => [], 'hot_keys' => []];
         $queuePipeline = $pipelines['queue'] ?? ['summary' => [], 'jobs' => []];
+        $aiPipeline = $pipelines['ai'] ?? ['summary' => [], 'calls' => []];
 
         $cacheHighlights = ($cachePipeline['hot_keys'] ?? []) === []
             ? '<div class="empty-state"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg><p>No cache hotspots captured</p></div>'
@@ -1182,6 +1251,10 @@ HTML;
         $queueHighlights = ($queuePipeline['jobs'] ?? []) === []
             ? '<div class="empty-state"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg><p>No queue jobs captured</p></div>'
             : '<pre>' . $this->pretty($queuePipeline['jobs']) . '</pre>';
+
+        $aiHighlights = ($aiPipeline['calls'] ?? []) === []
+            ? '<div class="empty-state"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg><p>No AI traces captured</p></div>'
+            : '<pre>' . $this->pretty($aiPipeline['calls']) . '</pre>';
 
         return <<<HTML
 <div class="stack-grid">
@@ -1213,6 +1286,17 @@ HTML;
     <div class="section-split">
       <h4 class="section-heading">Jobs, failures and retries</h4>
       {$queueHighlights}
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title">AI Pipeline</h3>
+      <span class="badge">{$this->countPipelineItems($aiPipeline['calls'] ?? [])} calls</span>
+    </div>
+    {$this->renderSummaryGrid($aiPipeline['summary'] ?? [])}
+    <div class="section-split">
+      <h4 class="section-heading">Providers, tokens and tool calls</h4>
+      {$aiHighlights}
     </div>
   </div>
 </div>
@@ -1404,8 +1488,9 @@ HTML;
         $total = (float) ($this->context['metrics']['total_ms'] ?? 0.0);
         $db = (float) ($this->context['metrics']['db_ms'] ?? 0.0);
         $view = (float) ($this->context['metrics']['view_ms'] ?? 0.0);
+        $ai = (float) ($this->context['metrics']['ai_ms'] ?? 0.0);
 
-        return sprintf('total;dur=%.3f, db;dur=%.3f, view;dur=%.3f', $total, $db, $view);
+        return sprintf('total;dur=%.3f, db;dur=%.3f, view;dur=%.3f, ai;dur=%.3f', $total, $db, $view, $ai);
     }
 
     private function inspectorUrl(string $id): string
@@ -1456,6 +1541,116 @@ HTML;
         return $value;
     }
 
+    private function sanitizeAiTrace(array $payload): array
+    {
+        $payload = $this->sanitize($payload);
+        $mask = filter_var($_ENV['SPARK_AI_MASK'] ?? 'true', FILTER_VALIDATE_BOOLEAN);
+
+        if (!$mask) {
+            return $this->truncateAiPayload($payload);
+        }
+
+        foreach (['request', 'response'] as $section) {
+            if (!isset($payload[$section]) || !is_array($payload[$section])) {
+                continue;
+            }
+
+            foreach ($payload[$section] as $key => $value) {
+                $payload[$section][$key] = $this->maskAiValue($value, (string) $key);
+            }
+        }
+
+        if (isset($payload['error']) && is_string($payload['error'])) {
+            $payload['error'] = $this->maskAiText($payload['error'], 'error');
+        }
+
+        return $this->truncateAiPayload($payload);
+    }
+
+    private function truncateAiPayload(array $payload): array
+    {
+        $previewLimit = max(40, (int) ($_ENV['SPARK_AI_TRACE_PREVIEW'] ?? 240));
+
+        foreach (['request', 'response'] as $section) {
+            if (!isset($payload[$section]) || !is_array($payload[$section])) {
+                continue;
+            }
+
+            foreach ($payload[$section] as $key => $value) {
+                $payload[$section][$key] = $this->truncateAiValue($value, $previewLimit);
+            }
+        }
+
+        return $payload;
+    }
+
+    private function maskAiValue(mixed $value, string $key): mixed
+    {
+        $key = strtolower($key);
+        foreach (['prompt', 'system', 'input', 'instructions', 'text', 'content', 'context', 'structured', 'tool_results', 'query'] as $sensitive) {
+            if (str_contains($key, $sensitive)) {
+                return $this->maskAiText($value, $key);
+            }
+        }
+
+        if (is_array($value)) {
+            $masked = [];
+            foreach ($value as $childKey => $childValue) {
+                $masked[$childKey] = $this->maskAiValue($childValue, (string) $childKey);
+            }
+
+            return $masked;
+        }
+
+        if (is_object($value)) {
+            return $this->maskAiValue((array) $value, $key);
+        }
+
+        return $value;
+    }
+
+    private function maskAiText(mixed $value, string $key): string
+    {
+        if (is_string($value)) {
+            $length = function_exists('mb_strlen') ? mb_strlen($value) : strlen($value);
+
+            return '[masked ' . $key . ' len=' . $length . ']';
+        }
+
+        if (is_array($value)) {
+            return '[masked ' . $key . ' items=' . count($value) . ']';
+        }
+
+        if (is_object($value)) {
+            return '[masked ' . $key . ' object]';
+        }
+
+        return '[masked ' . $key . ']';
+    }
+
+    private function truncateAiValue(mixed $value, int $limit): mixed
+    {
+        if (is_array($value)) {
+            $truncated = [];
+
+            foreach ($value as $key => $child) {
+                $truncated[$key] = $this->truncateAiValue($child, $limit);
+            }
+
+            return $truncated;
+        }
+
+        if (is_object($value)) {
+            return $this->truncateAiValue((array) $value, $limit);
+        }
+
+        if (is_string($value) && strlen($value) > $limit) {
+            return substr($value, 0, $limit) . '…';
+        }
+
+        return $value;
+    }
+
     private function snapshotRuntimeMetrics(): void
     {
         if ($this->context === []) {
@@ -1478,6 +1673,7 @@ HTML;
             'request' => $this->buildRequestPipeline(),
             'cache' => $this->buildCachePipeline(),
             'queue' => $this->buildQueuePipeline(),
+            'ai' => $this->buildAiPipeline(),
         ];
 
         $this->context['bottlenecks'] = $this->buildBottlenecks($this->context['pipelines']);
@@ -1569,6 +1765,7 @@ HTML;
                 'Views' => (string) count($this->context['views'] ?? []),
                 'Cache Ops' => (string) ($metrics['cache_ops'] ?? 0),
                 'Queue Ops' => (string) ($metrics['queue_ops'] ?? 0),
+                'AI Ops' => (string) ($metrics['ai_ops'] ?? 0),
             ],
             'steps' => $steps,
         ];
@@ -1716,6 +1913,56 @@ HTML;
         ];
     }
 
+    private function buildAiPipeline(): array
+    {
+        $metrics = $this->context['metrics'] ?? [];
+        $ai = $this->context['ai'] ?? [];
+        $calls = [];
+        $providers = [];
+        $models = [];
+
+        foreach ($ai as $item) {
+            $type = (string) ($item['type'] ?? 'unknown');
+            $provider = (string) ($item['provider'] ?? 'unknown');
+            $model = (string) ($item['model'] ?? 'unknown');
+
+            $providers[$provider] = true;
+            $models[$model] = true;
+
+            $calls[] = [
+                'type' => $type,
+                'provider' => $provider,
+                'model' => $model,
+                'duration_ms' => round((float) ($item['duration_ms'] ?? 0.0), 3),
+                'tokens' => $item['tokens'] ?? [],
+                'cost_usd' => (float) ($item['cost_usd'] ?? 0.0),
+                'tool_calls' => (int) ($item['tool_calls'] ?? 0),
+                'status' => $item['status'] ?? 'ok',
+                'request' => $item['request'] ?? [],
+                'response' => $item['response'] ?? [],
+            ];
+        }
+
+        usort($calls, static function (array $left, array $right): int {
+            return [$right['duration_ms'], $right['cost_usd'], $right['tool_calls']] <=> [$left['duration_ms'], $left['cost_usd'], $left['tool_calls']];
+        });
+
+        return [
+            'summary' => [
+                'Ops' => (string) ($metrics['ai_ops'] ?? 0),
+                'Time' => number_format((float) ($metrics['ai_ms'] ?? 0.0), 1) . ' ms',
+                'Input Tokens' => (string) ($metrics['ai_tokens_in'] ?? 0),
+                'Output Tokens' => (string) ($metrics['ai_tokens_out'] ?? 0),
+                'Total Tokens' => (string) ($metrics['ai_tokens_total'] ?? 0),
+                'Estimated Cost' => '$' . number_format((float) ($metrics['ai_cost_usd'] ?? 0.0), 6, '.', ''),
+                'Tool Calls' => (string) ($metrics['ai_tool_calls'] ?? 0),
+                'Providers' => implode(', ', array_keys($providers)) ?: 'n/a',
+                'Models' => implode(', ', array_keys($models)) ?: 'n/a',
+            ],
+            'calls' => array_slice($calls, 0, 8),
+        ];
+    }
+
     private function buildBottlenecks(array $pipelines): array
     {
         $timeline = $this->context['timeline'] ?? [];
@@ -1723,11 +1970,14 @@ HTML;
         $views = $this->context['views'] ?? [];
         $cacheHotKeys = $pipelines['cache']['hot_keys'] ?? [];
         $queueJobs = $pipelines['queue']['jobs'] ?? [];
+        $aiCalls = $pipelines['ai']['calls'] ?? [];
 
         $slowestStep = $this->findMaxBy($timeline, 'duration_ms');
         $slowestQuery = $this->findMaxBy($queries, 'duration_ms');
         $slowestView = $this->findMaxBy($views, 'duration_ms');
         $noisiestCacheKey = $this->findMaxBy($cacheHotKeys, 'ops');
+        $slowestAiCall = $this->findMaxBy($aiCalls, 'duration_ms');
+        $mostExpensiveAiCall = $this->findMaxBy($aiCalls, 'cost_usd');
         $mostFragileJob = null;
 
         if ($queueJobs !== []) {
@@ -1744,6 +1994,8 @@ HTML;
             'slowest_step' => $slowestStep,
             'slowest_query' => $slowestQuery,
             'slowest_view' => $slowestView,
+            'slowest_ai_call' => $slowestAiCall,
+            'most_expensive_ai_call' => $mostExpensiveAiCall,
             'noisiest_cache_key' => $noisiestCacheKey,
             'most_fragile_job' => $mostFragileJob,
         ], static fn(mixed $value): bool => $value !== null);

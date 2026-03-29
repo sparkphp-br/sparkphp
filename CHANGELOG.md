@@ -2,6 +2,23 @@
 
 Todas as mudancas publicas relevantes do SparkPHP passam a ser registradas aqui.
 
+## [0.6.0] - 2026-03-29
+
+### Added
+
+- observabilidade nativa de AI no `SparkInspector`, com coletor dedicado para `text`, `embeddings`, `image`, `audio`, `agent` e `retrieval`.
+- metricas first-party de AI: latencia, tokens, custo estimado, provider, model e tool calls.
+- pipeline de AI e gargalos como `slowest_ai_call` e `most_expensive_ai_call` no Inspector.
+- comandos `php spark ai:status` e `php spark ai:smoke-test` para diagnostico e validacao rapida da integracao.
+- nova documentacao dedicada para observabilidade de AI em `docs/19-ai-observability.md`.
+
+### Changed
+
+- `AiFakeProvider` agora emite `usage` e `cost_usd` consistentes para todos os builders, melhorando suite, smoke test e DX local.
+- o boot minimo do framework passa a registrar `AiManager` com base path correto tambem no contexto de CLI.
+- docs de AI (`docs/16-ai.md`, `docs/17-ai-conventions.md`, `docs/18-search.md`) foram expandidas com exemplos mais detalhados e fluxos operacionais.
+- versao publicada do framework avancou para `0.6.0`.
+
 ## [0.5.0] - 2026-03-29
 
 ### Added

@@ -4,7 +4,7 @@
 
 Baseline atual: PHP 8.3+, SQLite 3.35+, MySQL 8.0+ e PostgreSQL 13+.
 
-Versao publicada atual: `0.5.0` (`0.5.x`). O historico de releases fica em
+Versao publicada atual: `0.6.0` (`0.6.x`). O historico de releases fica em
 `CHANGELOG.md` na raiz do projeto.
 
 ---
@@ -31,6 +31,7 @@ Versao publicada atual: `0.5.0` (`0.5.x`). O historico de releases fica em
 | 16 | [AI SDK](16-ai.md)                             | SDK unificado para texto, embeddings, imagem, audio e agentes |
 | 17 | [AI Conventions](17-ai-conventions.md)         | `app/ai/*`, prompts nomeados, tools file-based e structured output |
 | 18 | [Semantic Search & Retrieval](18-search.md)    | Busca vetorial, `pgvector`, retrieval em `ai()` e fluxo de RAG curto |
+| 19 | [AI Observability](19-ai-observability.md)     | Inspector, mascaramento de traces, AI status e smoke test     |
 
 ---
 

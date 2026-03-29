@@ -68,6 +68,10 @@ final class AiRetrievalTest extends TestCase
         $this->assertGreaterThanOrEqual($result->items[1]->vector_score, $result->items[0]->vector_score);
         $this->assertStringContainsString('Vector queries in SparkPHP.', $result->toPromptContext('content'));
         $this->assertSame('documents', $result->meta['source']);
+        $this->assertSame(2, $result->meta['result_count']);
+        $this->assertSame(8, $result->meta['vector_dimensions']);
+        $this->assertGreaterThan(0, $result->meta['usage']['total'] ?? 0);
+        $this->assertGreaterThan(0.0, $result->meta['cost_usd'] ?? 0.0);
     }
 
     public function testModelSemanticSearchAndAiRetrieveCanWorkTogether(): void
@@ -89,6 +93,7 @@ final class AiRetrievalTest extends TestCase
         $this->assertSame('SparkPHP vector search', $retrieval->first()->title);
         $this->assertSame('AiRetrievalDocument', $retrieval->meta['source']);
         $this->assertIsArray($retrieval->toArray()['items'][0]);
+        $this->assertGreaterThan(0, $retrieval->meta['usage']['total'] ?? 0);
     }
 }
 

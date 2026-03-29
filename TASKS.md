@@ -187,7 +187,7 @@ Sempre analise os seguintes documentos (vão criar uma orientação melhor do pr
   - Facilitar RAG sem transformar o Spark em uma colagem de pacotes
   - Oferecer APIs curtas para casos comuns e extensibilidade para casos avançados
 
-- [ ] Task 7.4 — AI observável por default
+- [x] Task 7.4 — AI observável por default
   - Mostrar latência, custo, tokens, provider e tool calls no Inspector
   - Adicionar tracing de prompts e respostas com mascaramento de dados sensíveis
   - Criar comandos CLI de diagnóstico e smoke-test para integrações de AI

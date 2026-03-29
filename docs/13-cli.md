@@ -24,6 +24,16 @@ php spark <comando> [opcoes]
 | `php spark about`    | Exibe diagnosticos do ambiente, PHP, extensoes, banco  |
 | `php spark benchmark`| Roda benchmark de performance do framework             |
 
+### AI
+
+| Comando                        | Descricao                                                  |
+|--------------------------------|------------------------------------------------------------|
+| `php spark ai:status`          | Mostra driver, models e configuracao de trace de AI        |
+| `php spark ai:status --json`   | Mesmo diagnostico em JSON                                  |
+| `php spark ai:smoke-test`      | Executa smoke test das capacidades de AI configuradas      |
+| `php spark ai:smoke-test --capability=text` | Roda apenas uma capacidade especifica     |
+| `php spark ai:smoke-test --json` | Emite o relatorio em JSON                                |
+
 ### Migrations
 
 | Comando                    | Descricao                                     |
@@ -149,6 +159,15 @@ php spark serve --dry-run
 
 # Gerar spec OpenAPI da API
 php spark api:spec
+
+# Verificar estado atual da camada de AI
+php spark ai:status
+
+# Smoke test completo do provider configurado
+php spark ai:smoke-test
+
+# Smoke test apenas de retrieval
+php spark ai:smoke-test --capability=retrieval
 
 # Rodar a suite comparativa de benchmark
 php spark benchmark --iterations=50 --warmup=5
@@ -285,13 +304,49 @@ php spark --version
 php spark -V
 
 # Saida:
-#   SparkPHP v0.5.0 (0.5.x)
-#   SparkPHP environment report  v0.5.0
+#   SparkPHP v0.6.0 (0.6.x)
+#   SparkPHP environment report  v0.6.0
 #   PHP 8.3.0
 #   Environment: production
 #   Database: mysql (sparkphp@localhost)
 #   ...
 ```
+
+### AI status e smoke test
+
+```bash
+# Diagnostico do runtime de AI
+php spark ai:status
+
+# Formato JSON para automacao
+php spark ai:status --json
+
+# Validar texto, embeddings, imagem, audio, agente e retrieval
+php spark ai:smoke-test
+
+# Rodar apenas uma capacidade
+php spark ai:smoke-test --capability=agent
+php spark ai:smoke-test --capability=retrieval --json
+```
+
+O `ai:status` mostra:
+
+- driver atual
+- provider resolvido
+- modelos por capacidade
+- defaults de imagem/audio
+- configuracao de trace do Inspector
+
+Por default, o `ai:smoke-test` cobre `text`, `embeddings`, `image`, `audio` e `agent`.
+Use `--capability=retrieval` quando quiser validar tambem a camada de dados.
+
+O `ai:smoke-test` retorna por capacidade:
+
+- status
+- latencia
+- tokens
+- custo
+- resumo curto do resultado
 
 ## Spark Inspector
 
@@ -303,12 +358,15 @@ SPARK_INSPECTOR_PREFIX=/_spark
 SPARK_INSPECTOR_HISTORY=150  # requests no historico
 SPARK_INSPECTOR_MASK=false   # mascara dados sensiveis
 SPARK_INSPECTOR_SLOW_MS=250  # threshold para marcar request como lenta
+SPARK_AI_MASK=true           # mascara prompts e respostas de AI
+SPARK_AI_TRACE_PREVIEW=240   # limite do preview no trace de AI
 ```
 
 Acesse `http://localhost:8000/_spark` para ver o painel do Inspector com:
 
 - Historico de requests
 - pipelines completos de request, cache e queue
+- pipeline e aba dedicados de AI, com provider, model, tokens, custo e tool calls
 - queries executadas e tempo
 - gargalos como slow query, slow view e cache hot keys
 - jobs, falhas, releases e retries quando a fila passa pelo runtime instrumentado

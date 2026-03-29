@@ -2,7 +2,7 @@
 
 class SparkVersion
 {
-    public const FALLBACK = '0.5.0';
+    public const FALLBACK = '0.6.0';
 
     public static function current(?string $basePath = null): string
     {

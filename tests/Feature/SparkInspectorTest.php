@@ -197,6 +197,87 @@ final class SparkInspectorTest extends TestCase
         $this->assertCount(1, $payload['queries']);
     }
 
+    public function testInspectorTracksAiMetricsPipelinesAndMasking(): void
+    {
+        $this->enableInspector();
+        $_ENV['SPARK_AI_MASK'] = 'true';
+        $_ENV['SPARK_AI_TRACE_PREVIEW'] = '64';
+
+        $_SERVER['REQUEST_METHOD'] = 'POST';
+        $_SERVER['REQUEST_URI'] = '/api/assistant';
+        $_SERVER['HTTP_HOST'] = 'sparkphp.test';
+        $_SERVER['HTTP_ACCEPT'] = 'application/json';
+        $_GET = [];
+        $_POST = [];
+
+        SparkInspector::boot($this->basePath);
+
+        $request = new Request();
+        SparkInspector::startRequest($request);
+        SparkInspector::recordAi([
+            'type' => 'text',
+            'driver' => 'fake',
+            'provider' => 'fake',
+            'model' => 'spark-text',
+            'status' => 'ok',
+            'duration_ms' => 12.5,
+            'request' => [
+                'prompt' => 'Segredo comercial do cliente XPTO',
+                'system' => 'Nao exponha informacoes sensiveis.',
+            ],
+            'response' => [
+                'text' => 'Resposta curta sobre o cliente XPTO',
+            ],
+            'tokens' => ['input' => 24, 'output' => 18, 'total' => 42],
+            'cost_usd' => 0.0012,
+        ]);
+        SparkInspector::recordAi([
+            'type' => 'agent',
+            'driver' => 'fake',
+            'provider' => 'fake',
+            'model' => 'spark-agent',
+            'status' => 'ok',
+            'duration_ms' => 25.0,
+            'request' => [
+                'prompt' => 'Analise o ticket 42.',
+                'instructions' => 'Use o contexto interno somente para auditoria.',
+                'tools' => [['name' => 'lookup-ticket']],
+            ],
+            'response' => [
+                'text' => 'Ticket 42 esta aberto.',
+                'tool_results' => ['lookup-ticket' => ['id' => 42]],
+            ],
+            'tokens' => ['input' => 30, 'output' => 10, 'total' => 40],
+            'tool_calls' => 1,
+            'cost_usd' => 0.0035,
+        ]);
+
+        $response = Response::json(['ok' => true]);
+        SparkInspector::decorateResponse($response);
+        $headers = $response->getHeaders();
+        SparkInspector::finalizeResponse($response);
+
+        $entry = (new SparkInspectorStorage($this->basePath))->find((string) ($headers['X-Spark-Request-Id'] ?? ''));
+
+        $this->assertIsArray($entry);
+        $this->assertCount(2, $entry['ai']);
+        $this->assertSame(2, $entry['metrics']['ai_ops']);
+        $this->assertSame(1, $entry['metrics']['ai_text_ops']);
+        $this->assertSame(1, $entry['metrics']['ai_agent_ops']);
+        $this->assertSame(1, $entry['metrics']['ai_tool_calls']);
+        $this->assertSame(82, $entry['metrics']['ai_tokens_total']);
+        $this->assertSame(0.0047, round((float) $entry['metrics']['ai_cost_usd'], 4));
+        $this->assertSame('2', $entry['pipelines']['ai']['summary']['Ops']);
+        $this->assertSame('82', $entry['pipelines']['ai']['summary']['Total Tokens']);
+        $this->assertSame('fake', $entry['pipelines']['ai']['summary']['Providers']);
+        $this->assertSame('agent', $entry['bottlenecks']['slowest_ai_call']['type']);
+        $this->assertSame('agent', $entry['bottlenecks']['most_expensive_ai_call']['type']);
+        $this->assertStringContainsString('ai;dur=37.500', $headers['Server-Timing'] ?? '');
+        $this->assertStringContainsString('[masked prompt len=', $entry['ai'][0]['request']['prompt']);
+        $this->assertStringContainsString('[masked text len=', $entry['ai'][0]['response']['text']);
+        $this->assertStringContainsString('[masked tool_results items=', $entry['ai'][1]['response']['tool_results']);
+    }
+
     private function makeEntry(string $id, string $path): array
     {
         return [

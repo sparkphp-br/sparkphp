@@ -15,7 +15,7 @@ O SparkPHP fornece dezenas de funcoes globais para que voce nao precise importar
 | `storage_path('x')` | Caminho absoluto para `storage/x`               |
 | `public_path('x')`  | Caminho absoluto para `public/x`                |
 | `spark_version()`   | Versao atual do framework lida de `VERSION`     |
-| `spark_release_line()` | Linha de release atual (`0.5.x`, `1.2.x`)   |
+| `spark_release_line()` | Linha de release atual (`0.6.x`, `1.2.x`)   |
 | `url('/path')`      | URL completa: `APP_URL` + `/path`               |
 
 ## AI
@@ -71,6 +71,19 @@ $documents = ai()->retrieve('Como configuro cache?')
 
 $context = $documents->toPromptContext('content');
 ```
+
+Diagnostico rapido:
+
+```bash
+php spark ai:status
+php spark ai:smoke-test
+```
+
+Observabilidade:
+
+- chamadas feitas por `ai()` entram automaticamente no Spark Inspector quando ele esta ativo
+- `SPARK_AI_MASK=true` mascara prompt, resposta, contexto e tool results no trace
+- o guia detalhado fica em [19-ai-observability.md](19-ai-observability.md)
 
 ## Request & Input
 

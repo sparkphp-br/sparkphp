@@ -557,6 +557,83 @@ abstract class AiOperation
     {
         return $this->model ?? trim((string) ($_ENV[$envKey] ?? $fallback)) ?: $fallback;
     }
+
+    protected function observe(string $type, array $requestPayload, callable $callback, ?callable $describeResponse = null): mixed
+    {
+        $startedAt = microtime(true);
+
+        try {
+            $result = $callback();
+        } catch (Throwable $e) {
+            $this->recordTrace([
+                'type' => $type,
+                'driver' => $this->driver,
+                'provider' => $this->provider->name(),
+                'model' => $requestPayload['model'] ?? null,
+                'status' => 'failed',
+                'duration_ms' => round((microtime(true) - $startedAt) * 1000, 3),
+                'request' => $requestPayload,
+                'response' => [
+                    'exception' => $e::class,
+                    'error' => $e->getMessage(),
+                ],
+                'tool_calls' => count($requestPayload['tools'] ?? []),
+            ]);
+
+            throw $e;
+        }
+
+        $payload = is_callable($describeResponse) ? (array) $describeResponse($result) : [];
+        $payload['type'] ??= $type;
+        $payload['driver'] ??= $this->driver;
+        $payload['provider'] ??= $this->provider->name();
+        $payload['model'] ??= $requestPayload['model'] ?? null;
+        $payload['status'] ??= 'ok';
+        $payload['duration_ms'] ??= round((microtime(true) - $startedAt) * 1000, 3);
+        $payload['request'] ??= $requestPayload;
+        $payload['tool_calls'] ??= count($requestPayload['tools'] ?? []);
+
+        $this->recordTrace($payload);
+
+        return $result;
+    }
+
+    protected function usageFromMeta(array $meta): array
+    {
+        $usage = $meta['usage'] ?? $meta['tokens'] ?? [];
+        if (!is_array($usage)) {
+            return ['input' => 0, 'output' => 0, 'total' => 0];
+        }
+
+        $input = max(0, (int) ($usage['input'] ?? $usage['input_tokens'] ?? $usage['prompt_tokens'] ?? 0));
+        $output = max(0, (int) ($usage['output'] ?? $usage['output_tokens'] ?? $usage['completion_tokens'] ?? 0));
+        $total = max($input + $output, (int) ($usage['total'] ?? $usage['total_tokens'] ?? 0));
+
+        return [
+            'input' => $input,
+            'output' => $output,
+            'total' => $total,
+        ];
+    }
+
+    protected function costFromMeta(array $meta): float
+    {
+        return round((float) ($meta['cost_usd'] ?? $meta['cost'] ?? 0.0), 6);
+    }
+
+    protected function vectorPreview(array $vector, int $limit = 8): array
+    {
+        return array_slice(array_map(static fn(mixed $value): float => round((float) $value, 6), $vector), 0, $limit);
+    }
+
+    private function recordTrace(array $payload): void
+    {
+        if (!class_exists('SparkInspector', false) || !method_exists('SparkInspector', 'recordAi')) {
+            return;
+        }
+
+        SparkInspector::recordAi($payload);
+    }
 }
 
 final class AiTextOperation extends AiOperation
@@ -617,7 +694,7 @@ final class AiTextOperation extends AiOperation
             throw new AiException('AI text generation requires a prompt.');
         }
 
-        return $this->provider->text(new AiTextRequest(
+        $request = new AiTextRequest(
             prompt: $this->prompt,
             system: $this->system,
             model: $this->defaultModel('AI_TEXT_MODEL', 'spark-text'),
@@ -625,7 +702,33 @@ final class AiTextOperation extends AiOperation
             maxTokens: $this->maxTokens,
             schema: $this->schema,
             options: $this->options,
-        ));
+        );
+
+        return $this->observe(
+            'text',
+            [
+                'prompt' => $request->prompt,
+                'system' => $request->system,
+                'model' => $request->model,
+                'temperature' => $request->temperature,
+                'max_tokens' => $request->maxTokens,
+                'schema' => $request->schema,
+                'options' => $request->options,
+            ],
+            fn(): AiTextResponse => $this->provider->text($request),
+            function (AiTextResponse $response): array {
+                return [
+                    'provider' => $response->provider,
+                    'model' => $response->model,
+                    'response' => array_filter([
+                        'text' => $response->text,
+                        'structured' => $response->structured,
+                    ], static fn(mixed $value): bool => $value !== null),
+                    'tokens' => $this->usageFromMeta($response->meta),
+                    'cost_usd' => $this->costFromMeta($response->meta),
+                ];
+            }
+        );
     }
 }
 
@@ -650,11 +753,34 @@ final class AiEmbeddingOperation extends AiOperation
             ? array_values($this->input)
             : [$this->input];
 
-        return $this->provider->embeddings(new AiEmbeddingRequest(
+        $request = new AiEmbeddingRequest(
             input: $input,
             model: $this->defaultModel('AI_EMBEDDING_MODEL', 'spark-embedding'),
             options: $this->options,
-        ));
+        );
+
+        return $this->observe(
+            'embeddings',
+            [
+                'input' => $request->input,
+                'model' => $request->model,
+                'options' => $request->options,
+            ],
+            fn(): AiEmbeddingResponse => $this->provider->embeddings($request),
+            function (AiEmbeddingResponse $response): array {
+                return [
+                    'provider' => $response->provider,
+                    'model' => $response->model,
+                    'response' => [
+                        'vector_count' => count($response->vectors),
+                        'dimensions' => count($response->first()),
+                        'first_vector' => $this->vectorPreview($response->first()),
+                    ],
+                    'tokens' => $this->usageFromMeta($response->meta),
+                    'cost_usd' => $this->costFromMeta($response->meta),
+                ];
+            }
+        );
     }
 }
 
@@ -745,30 +871,67 @@ final class AiRetrievalOperation extends AiOperation
             throw new AiException('AI retrieval requires a source table, model or QueryBuilder.');
         }
 
-        $builder = $this->resolveBuilder();
-        $vector = $this->resolveQueryVector();
-
-        if ($this->columns !== []) {
-            $builder->select($this->columns);
-        }
-
-        $items = $builder
-            ->selectVectorSimilarity($this->vectorColumn, $vector, 'vector_score', $this->metric)
-            ->whereVectorSimilarTo($this->vectorColumn, $vector, $this->threshold, $this->metric)
-            ->limit($this->limit)
-            ->get();
-
-        return new AiRetrievalResult(
-            items: $items,
-            provider: $this->provider->name(),
-            model: $this->defaultModel('AI_EMBEDDING_MODEL', 'spark-embedding'),
-            meta: [
-                'metric' => $this->metric,
+        return $this->observe(
+            'retrieval',
+            [
+                'query' => $this->input,
+                'source' => $this->describeSource(),
                 'vector_column' => $this->vectorColumn,
+                'metric' => $this->metric,
                 'threshold' => $this->threshold,
                 'limit' => $this->limit,
-                'source' => $this->describeSource(),
+                'columns' => $this->columns,
+                'model' => $this->defaultModel('AI_EMBEDDING_MODEL', 'spark-embedding'),
+                'options' => $this->options,
             ],
+            function (): AiRetrievalResult {
+                $builder = $this->resolveBuilder();
+                $queryVector = $this->resolveQueryVector();
+                $vector = $queryVector['vector'];
+
+                if ($this->columns !== []) {
+                    $builder->select($this->columns);
+                }
+
+                $items = $builder
+                    ->selectVectorSimilarity($this->vectorColumn, $vector, 'vector_score', $this->metric)
+                    ->whereVectorSimilarTo($this->vectorColumn, $vector, $this->threshold, $this->metric)
+                    ->limit($this->limit)
+                    ->get();
+
+                return new AiRetrievalResult(
+                    items: $items,
+                    provider: $queryVector['provider'] ?: $this->provider->name(),
+                    model: $queryVector['model'] ?: $this->defaultModel('AI_EMBEDDING_MODEL', 'spark-embedding'),
+                    meta: [
+                        'metric' => $this->metric,
+                        'vector_column' => $this->vectorColumn,
+                        'threshold' => $this->threshold,
+                        'limit' => $this->limit,
+                        'source' => $this->describeSource(),
+                        'result_count' => count($items),
+                        'vector_dimensions' => count($vector),
+                        'usage' => $queryVector['usage'],
+                        'cost_usd' => $queryVector['cost_usd'],
+                    ],
+                );
+            },
+            function (AiRetrievalResult $result): array {
+                $items = array_slice($result->toArray()['items'], 0, 3);
+
+                return [
+                    'provider' => $result->provider,
+                    'model' => $result->model,
+                    'response' => [
+                        'result_count' => count($result->items),
+                        'items' => $items,
+                        'prompt_context' => $result->toPromptContext('content'),
+                        'meta' => $result->meta,
+                    ],
+                    'tokens' => $this->usageFromMeta($result->meta),
+                    'cost_usd' => $this->costFromMeta($result->meta),
+                ];
+            }
         );
     }
 
@@ -806,7 +969,13 @@ final class AiRetrievalOperation extends AiOperation
                 }
             }
 
-            return array_map(static fn(mixed $value): float => (float) $value, array_values($this->input));
+            return [
+                'vector' => array_map(static fn(mixed $value): float => (float) $value, array_values($this->input)),
+                'usage' => ['input' => 0, 'output' => 0, 'total' => 0],
+                'cost_usd' => 0.0,
+                'provider' => $this->provider->name(),
+                'model' => $this->defaultModel('AI_EMBEDDING_MODEL', 'spark-embedding'),
+            ];
         }
 
         $response = $this->provider->embeddings(new AiEmbeddingRequest(
@@ -815,7 +984,13 @@ final class AiRetrievalOperation extends AiOperation
             options: $this->options,
         ));
 
-        return array_map(static fn(mixed $value): float => (float) $value, $response->first());
+        return [
+            'vector' => array_map(static fn(mixed $value): float => (float) $value, $response->first()),
+            'usage' => $this->usageFromMeta($response->meta),
+            'cost_usd' => $this->costFromMeta($response->meta),
+            'provider' => $response->provider,
+            'model' => $response->model,
+        ];
     }
 }
 
@@ -844,12 +1019,38 @@ final class AiImageOperation extends AiOperation
             throw new AiException('AI image generation requires a prompt.');
         }
 
-        return $this->provider->image(new AiImageRequest(
+        $request = new AiImageRequest(
             prompt: $this->prompt,
             model: $this->defaultModel('AI_IMAGE_MODEL', 'spark-image'),
             size: $this->size ?? trim((string) ($_ENV['AI_IMAGE_SIZE'] ?? '1024x1024')),
             options: $this->options,
-        ));
+        );
+
+        return $this->observe(
+            'image',
+            [
+                'prompt' => $request->prompt,
+                'model' => $request->model,
+                'size' => $request->size,
+                'options' => $request->options,
+            ],
+            fn(): AiImageResponse => $this->provider->image($request),
+            function (AiImageResponse $response): array {
+                return [
+                    'provider' => $response->provider,
+                    'model' => $response->model,
+                    'response' => [
+                        'mime_type' => $response->mimeType,
+                        'bytes' => strlen($response->content),
+                        'preview' => str_starts_with($response->content, 'FAKE_')
+                            ? substr($response->content, 0, 120)
+                            : null,
+                    ],
+                    'tokens' => $this->usageFromMeta($response->meta),
+                    'cost_usd' => $this->costFromMeta($response->meta),
+                ];
+            }
+        );
     }
 }
 
@@ -886,13 +1087,40 @@ final class AiAudioOperation extends AiOperation
             throw new AiException('AI audio generation requires an input string.');
         }
 
-        return $this->provider->audio(new AiAudioRequest(
+        $request = new AiAudioRequest(
             input: $this->input,
             model: $this->defaultModel('AI_AUDIO_MODEL', 'spark-audio'),
             voice: $this->voice ?? trim((string) ($_ENV['AI_AUDIO_VOICE'] ?? 'default')),
             format: $this->format ?? trim((string) ($_ENV['AI_AUDIO_FORMAT'] ?? 'mp3')),
             options: $this->options,
-        ));
+        );
+
+        return $this->observe(
+            'audio',
+            [
+                'input' => $request->input,
+                'model' => $request->model,
+                'voice' => $request->voice,
+                'format' => $request->format,
+                'options' => $request->options,
+            ],
+            fn(): AiAudioResponse => $this->provider->audio($request),
+            function (AiAudioResponse $response): array {
+                return [
+                    'provider' => $response->provider,
+                    'model' => $response->model,
+                    'response' => [
+                        'mime_type' => $response->mimeType,
+                        'bytes' => strlen($response->content),
+                        'preview' => str_starts_with($response->content, 'FAKE_')
+                            ? substr($response->content, 0, 120)
+                            : null,
+                    ],
+                    'tokens' => $this->usageFromMeta($response->meta),
+                    'cost_usd' => $this->costFromMeta($response->meta),
+                ];
+            }
+        );
     }
 }
 
@@ -1007,7 +1235,7 @@ final class AiAgentOperation extends AiOperation
             throw new AiException('AI agents require a prompt.');
         }
 
-        return $this->provider->agent(new AiAgentRequest(
+        $request = new AiAgentRequest(
             name: $this->name,
             prompt: $this->prompt,
             instructions: $this->instructions,
@@ -1018,7 +1246,42 @@ final class AiAgentOperation extends AiOperation
             maxSteps: $this->maxSteps ?? 3,
             schema: $this->schema,
             options: $this->options,
-        ));
+        );
+
+        return $this->observe(
+            'agent',
+            [
+                'name' => $request->name,
+                'prompt' => $request->prompt,
+                'instructions' => $request->instructions,
+                'model' => $request->model,
+                'tools' => array_map(
+                    static fn(mixed $tool): mixed => $tool instanceof AiTool ? $tool->manifest() : $tool,
+                    $request->tools
+                ),
+                'context' => $request->context,
+                'temperature' => $request->temperature,
+                'max_steps' => $request->maxSteps,
+                'schema' => $request->schema,
+                'options' => $request->options,
+            ],
+            fn(): AiAgentResponse => $this->provider->agent($request),
+            function (AiAgentResponse $response): array {
+                return [
+                    'provider' => $response->provider,
+                    'model' => $response->model,
+                    'response' => array_filter([
+                        'text' => $response->text,
+                        'structured' => $response->structured,
+                        'tools' => $response->tools,
+                        'tool_results' => $response->meta['tool_results'] ?? null,
+                    ], static fn(mixed $value): bool => $value !== null),
+                    'tokens' => $this->usageFromMeta($response->meta),
+                    'cost_usd' => $this->costFromMeta($response->meta),
+                    'tool_calls' => count($response->tools),
+                ];
+            }
+        );
     }
 
     public function generate(): AiAgentResponse
@@ -1476,13 +1739,18 @@ final class AiFakeProvider implements AiProvider
         $text = $structured !== null
             ? (json_encode($structured, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) ?: '{}')
             : 'Fake response: ' . trim($prompt);
+        $usage = $this->usageFor($prompt, $text);
 
         return new AiTextResponse(
             text: $text,
             provider: $this->name(),
             model: $request->model,
             structured: $structured,
-            meta: ['driver' => 'fake'],
+            meta: [
+                'driver' => 'fake',
+                'usage' => $usage,
+                'cost_usd' => $this->estimateCostUsd($usage['total'], 'text'),
+            ],
         );
     }
 
@@ -1495,12 +1763,17 @@ final class AiFakeProvider implements AiProvider
         }
 
         $vectors = array_map(fn(string $input): array => $this->vectorize($input), $request->input);
+        $usage = $this->usageFor($request->input, 'embedding');
 
         return new AiEmbeddingResponse(
             vectors: $vectors,
             provider: $this->name(),
             model: $request->model,
-            meta: ['dimensions' => count($vectors[0] ?? [])],
+            meta: [
+                'dimensions' => count($vectors[0] ?? []),
+                'usage' => $usage,
+                'cost_usd' => $this->estimateCostUsd($usage['total'], 'embeddings'),
+            ],
         );
     }
 
@@ -1512,12 +1785,18 @@ final class AiFakeProvider implements AiProvider
             return $resolver($request);
         }
 
+        $usage = $this->usageFor($request->prompt, 'image');
+
         return new AiImageResponse(
             content: 'FAKE_IMAGE:' . $request->prompt,
             provider: $this->name(),
             model: $request->model,
             mimeType: 'image/png',
-            meta: ['size' => $request->size],
+            meta: [
+                'size' => $request->size,
+                'usage' => $usage,
+                'cost_usd' => $this->estimateCostUsd($usage['total'], 'image'),
+            ],
         );
     }
 
@@ -1529,12 +1808,19 @@ final class AiFakeProvider implements AiProvider
             return $resolver($request);
         }
 
+        $usage = $this->usageFor($request->input, 'audio');
+
         return new AiAudioResponse(
             content: 'FAKE_AUDIO:' . $request->input,
             provider: $this->name(),
             model: $request->model,
             mimeType: $request->format === 'wav' ? 'audio/wav' : 'audio/mpeg',
-            meta: ['voice' => $request->voice],
+            meta: [
+                'voice' => $request->voice,
+                'format' => $request->format,
+                'usage' => $usage,
+                'cost_usd' => $this->estimateCostUsd($usage['total'], 'audio'),
+            ],
         );
     }
 
@@ -1558,6 +1844,16 @@ final class AiFakeProvider implements AiProvider
             $toolResults[$tool->name] = $tool->call($arguments);
         }
 
+        $usage = $this->usageFor(
+            [
+                $request->instructions,
+                $request->prompt,
+                $request->context,
+                $toolResults,
+            ],
+            $structured ?? ('Fake agent response: ' . trim($request->prompt))
+        );
+
         return new AiAgentResponse(
             text: $structured !== null
                 ? (json_encode($structured, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) ?: '{}')
@@ -1570,7 +1866,10 @@ final class AiFakeProvider implements AiProvider
             meta: [
                 'agent' => $request->name,
                 'max_steps' => $request->maxSteps,
+                'tool_calls' => count($toolManifests),
                 'tool_results' => $toolResults,
+                'usage' => $usage,
+                'cost_usd' => $this->estimateCostUsd($usage['total'], 'agent'),
             ],
         );
     }
@@ -1621,6 +1920,51 @@ final class AiFakeProvider implements AiProvider
         }
 
         return $vector;
+    }
+
+    private function usageFor(mixed $input, mixed $output): array
+    {
+        $inputTokens = $this->estimateTokens($input);
+        $outputTokens = $this->estimateTokens($output);
+
+        return [
+            'input' => $inputTokens,
+            'output' => $outputTokens,
+            'total' => $inputTokens + $outputTokens,
+        ];
+    }
+
+    private function estimateTokens(mixed $value): int
+    {
+        if ($value === null) {
+            return 0;
+        }
+
+        if (is_array($value) || is_object($value)) {
+            $value = json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '';
+        }
+
+        $text = trim((string) $value);
+        if ($text === '') {
+            return 0;
+        }
+
+        $length = function_exists('mb_strlen') ? mb_strlen($text) : strlen($text);
+
+        return max(1, (int) ceil($length / 4));
+    }
+
+    private function estimateCostUsd(int $tokens, string $type): float
+    {
+        $ratePerThousand = match ($type) {
+            'embeddings' => 0.0001,
+            'image' => 0.012,
+            'audio' => 0.0025,
+            'agent' => 0.0035,
+            default => 0.0015,
+        };
+
+        return round(($tokens / 1000) * $ratePerThousand, 6);
     }
 
     private function toolArguments(array $context, string $toolName): array

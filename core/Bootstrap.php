@@ -28,6 +28,8 @@ class Bootstrap
         $this->loadEnv();
         $this->initContainer();
         $this->registerAutoloader();
+        require_once __DIR__ . '/Ai.php';
+        $this->container->singleton(AiManager::class, fn(Container $container) => new AiManager($container, $this->basePath));
         $this->loadHelpers();
         $this->configureRuntime();
         $this->initSession();

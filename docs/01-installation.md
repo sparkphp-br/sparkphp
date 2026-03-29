@@ -93,6 +93,10 @@ projeto. Ele alimenta `php spark version`, `php spark about`, a rota raiz padrao
 spec OpenAPI gerada pelo CLI. O `CHANGELOG.md` registra o historico humano de produto
 da linha publicada.
 
+Esse mesmo bootstrap tambem alimenta os comandos `php spark ai:status` e
+`php spark ai:smoke-test`, usados para diagnosticar a camada de AI do projeto sem
+acessar o browser.
+
 Ao rodar `php spark init`, essa estrutura tambem prepara `app/ai/agents`,
 `app/ai/prompts` e `app/ai/tools`, deixando a camada de AI pronta para seguir a
 mesma filosofia file-based do restante do framework.
@@ -152,12 +156,22 @@ AI_DRIVER=fake                           # fake
 AI_TEXT_MODEL=spark-text
 AI_EMBEDDING_MODEL=spark-embedding
 AI_IMAGE_MODEL=spark-image
+AI_IMAGE_SIZE=1024x1024
 AI_AUDIO_MODEL=spark-audio
+AI_AUDIO_VOICE=default
+AI_AUDIO_FORMAT=mp3
 AI_AGENT_MODEL=spark-agent
+SPARK_AI_MASK=true
+SPARK_AI_TRACE_PREVIEW=240
 
 # Log
 LOG_LEVEL=debug
 ```
+
+Esses dois ultimos valores controlam o trace de AI no Inspector:
+
+- `SPARK_AI_MASK=true` mascara prompts, respostas, contexto e tool results
+- `SPARK_AI_TRACE_PREVIEW=240` limita previews longos no painel
 
 ## Configuracao opcional da aplicacao
 
