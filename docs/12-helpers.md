@@ -121,8 +121,18 @@ O SparkPHP fornece dezenas de funcoes globais para que voce nao precise importar
 | `event('Name', $data)`                      | Alias de `emit()`                     |
 | `on('Name', $callback)`                     | Registra listener in-memory           |
 | `off('Name', $callback)`                    | Remove listener                       |
-| `dispatch(Job::class, $data)`               | Despacha job para a fila              |
+| `dispatch(Job::class, $data)`               | Despacha usando a rota/default do job |
+| `dispatch(Job::class, $data, 'emails')`     | Despacha forçando uma fila especifica |
 | `dispatch_later(Job::class, $data, $delay)` | Despacha com delay (segundos)         |
+| `queue()`                                   | Retorna a instancia de `Queue`        |
+| `queue(Job::class, $data)`                  | Enfileira manualmente                 |
+
+As helpers de job respeitam a configuracao final resolvida pelo Spark:
+
+- defaults internos
+- `app/jobs/_queue.php`
+- propriedades / atributos da classe do job
+- fila informada inline no `dispatch(..., 'emails')`
 
 ## Mail
 

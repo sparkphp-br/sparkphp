@@ -52,8 +52,13 @@ php spark <comando> [opcoes]
 |--------------------------|------------------------------------------|
 | `php spark queue:work`   | Inicia worker que processa jobs          |
 | `php spark queue:work --queue=emails` | Worker para fila especifica   |
-| `php spark queue:list`   | Lista jobs pendentes                     |
+| `php spark queue:list`   | Lista filas com `ready`, `delayed` e `total` |
+| `php spark queue:inspect <id>` | Inspeciona um job pendente ou com falha |
+| `php spark queue:retry <id>` | Reenvia um job da fila `failed`        |
+| `php spark queue:retry --all` | Reenvia todos os jobs da fila `failed` |
 | `php spark queue:clear`  | Remove todos os jobs da fila             |
+| `php spark queue:clear default --job=SendMailJob` | Remove jobs filtrando por classe |
+| `php spark queue:clear default --id=job_...` | Remove um job especifico por ID |
 
 ### Cache & Otimizacao
 
@@ -65,6 +70,7 @@ php spark <comando> [opcoes]
 | `php spark routes:cache`    | Gera cache de rotas                       |
 | `php spark routes:clear`    | Limpa cache de rotas                      |
 | `php spark routes:list`     | Lista rotas com a ordem efetiva dos middlewares |
+| `php spark api:spec`        | Gera `storage/api/openapi.json` a partir das rotas |
 | `php spark optimize`        | Gera cache de rotas + views (para deploy) |
 
 ### Spark Inspector
@@ -129,10 +135,54 @@ php spark routes:list
 
 # A saida inclui middlewares globais, por diretorio e inline
 
+# Gerar spec OpenAPI da API
+php spark api:spec
+
 # Verificar o banco
 php spark db:show
 php spark db:table posts
 ```
+
+### OpenAPI por convencao
+
+O comando `php spark api:spec` gera uma spec OpenAPI 3.1 em JSON, por padrao em:
+
+```bash
+storage/api/openapi.json
+```
+
+Opcoes:
+
+```bash
+php spark api:spec
+php spark api:spec --output=public/openapi.json
+php spark api:spec --all
+```
+
+Por padrao, o comando foca em rotas `/api/*`. Com `--all`, ele inclui qualquer rota
+que o router conheca.
+
+O gerador usa convencoes do Spark para inferir a spec a partir de:
+
+- rotas file-based e `path()`
+- parametros dinamicos como `[id]`
+- route model binding implicito
+- `validate([...])` para `requestBody`
+- retorno do handler para respostas comuns (`Model`, array, paginação, JSON:API)
+- guards e middlewares como `auth` para `security`
+
+#### O que ele consegue inferir bem
+
+- `GET /api/users/[id]` com `fn(User $user) => $user`
+- `POST/PUT/PATCH` com `validate([...])`
+- respostas com `Model`, `Model::create(...)` e `Model::query()->paginate(...)`
+- envelopes padrao de erro `401`, `403`, `404` e `422` quando aplicavel
+
+#### Limites da inferencia
+
+Se a rota montar a resposta de forma muito dinamica, a spec pode cair para um schema
+mais generico. O objetivo do Spark aqui e cobrir muito bem o caso convencional,
+sem obrigar anotacoes verbosas em cada endpoint.
 
 ### Deploy em producao
 
@@ -146,6 +196,36 @@ php spark migrate
 # Iniciar worker de fila (se usar QUEUE=file)
 php spark queue:work &
 ```
+
+### Operando filas no dia a dia
+
+```bash
+# Ver a saude das filas
+php spark queue:list
+
+# Consumir so a fila de emails
+php spark queue:work --queue=emails --sleep=1
+
+# Processar N jobs e sair (bom para supervisores/smoke test)
+php spark queue:work --queue=default --max-jobs=10
+
+# Inspecionar o payload de um job com falha
+php spark queue:inspect job_67f2a... --queue=failed
+
+# Recolocar um job com falha na fila original
+php spark queue:retry job_67f2a...
+
+# Limpar apenas uma classe especifica da fila default
+php spark queue:clear default --job=SendWelcomeEmail
+```
+
+O worker respeita os metadados persistidos do job (`tries`, `backoff`, `timeout`
+e `fail_on_timeout`), resolvidos a partir de:
+
+- defaults internos do framework
+- `app/jobs/_queue.php`
+- propriedades / atributos da classe do job
+- overrides inline no despacho
 
 ### Diagnosticos
 

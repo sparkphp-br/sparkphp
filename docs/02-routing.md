@@ -169,6 +169,17 @@ Regra pratica:
 - classes que nao sao `Model`: resolvidas pelo Container
 - tipos primitivos (`int`, `string`, etc.): preenchidos por params da rota ou input/query
 
+### Isso tambem alimenta a spec OpenAPI
+
+O comando `php spark api:spec` usa essas mesmas convencoes para documentar a API:
+
+- `[id]` vira parametro de path
+- `User $user` vira route model binding na documentacao
+- `guard('auth')` vira `security`
+- `validate([...])` vira `requestBody`
+
+Ou seja: quanto mais convencional a rota, melhor fica a spec gerada sem anotacao extra.
+
 ## Path alias (redefinir URL)
 
 O file-based routing usa o caminho do arquivo como URL. Mas e se voce quiser uma URL diferente do nome do arquivo? Use `path()` no topo do arquivo de rota:

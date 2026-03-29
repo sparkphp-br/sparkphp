@@ -25,6 +25,51 @@ Se a validacao falhar:
   `{"error":"The given data was invalid.","status":422,"code":"validation_error","errors":{"campo":"mensagem"}}`
 - **Request HTML** (formulario): redireciona `back()` com erros e `old()` input na sessao
 
+## Integracao com OpenAPI
+
+As regras declaradas em `validate([...])` tambem servem de base para o comando:
+
+```bash
+php spark api:spec
+```
+
+O gerador usa essas regras para inferir o `requestBody` da spec OpenAPI, incluindo:
+
+- campos obrigatorios (`required`)
+- tipos basicos (`string`, `int`, `float`, `bool`, `email`, `url`, `date`)
+- limites (`min`, `max`, `between`)
+- enums (`in:...`)
+
+Exemplo:
+
+```php
+post(function () {
+    $data = validate([
+        'name' => 'required|string|min:3|max:100',
+        'email' => 'required|email',
+        'role' => 'in:admin,editor,user',
+        'active' => 'bool',
+    ]);
+
+    return User::create($data);
+});
+```
+
+vira um `requestBody` com schema equivalente a:
+
+```php
+[
+    'type' => 'object',
+    'required' => ['name', 'email'],
+    'properties' => [
+        'name' => ['type' => 'string', 'minLength' => 3, 'maxLength' => 100],
+        'email' => ['type' => 'string', 'format' => 'email'],
+        'role' => ['type' => 'string', 'enum' => ['admin', 'editor', 'user']],
+        'active' => ['type' => 'boolean'],
+    ],
+]
+```
+
 ---
 
 ## Regras disponiveis

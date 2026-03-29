@@ -666,42 +666,44 @@ function event(string $event, mixed $data = null): bool
 
 /**
  * Dispatch a job.
- * - QUEUE=sync (default): runs immediately in the same process
- * - QUEUE=file: pushes to the file queue for async processing
+ * - connection=sync: runs immediately in the same process
+ * - connection=file: pushes to storage/queue for async processing
  */
-function dispatch(string $jobClass, mixed $data = null, string $q = 'default'): void
+function dispatch(string $jobClass, mixed $data = null, ?string $q = null): void
 {
+    $queue = queue();
+    $options = $queue->resolveDispatchOptions($jobClass, $q !== null ? ['queue' => $q] : []);
+
     if (class_exists('SparkInspector')) {
         SparkInspector::recordQueue([
-            'type' => ($_ENV['QUEUE'] ?? 'sync') === 'sync' ? 'dispatch-sync' : 'dispatch',
+            'type' => $options['connection'] === 'sync' ? 'dispatch-sync' : 'dispatch',
             'job' => $jobClass,
-            'queue' => $q,
+            'queue' => $options['queue'],
             'data' => $data,
+            'tries' => $options['tries'],
+            'timeout' => $options['timeout'],
         ]);
     }
 
-    if (($_ENV['QUEUE'] ?? 'sync') !== 'sync') {
-        queue($jobClass, $data, $q);
+    if ($options['connection'] !== 'sync') {
+        $queue->push($jobClass, $data, $q);
         return;
     }
 
-    if (!class_exists($jobClass)) {
-        throw new \RuntimeException("Job not found: {$jobClass}");
-    }
-    $job = new $jobClass($data);
-    if (method_exists($job, 'handle')) {
-        $job->handle();
-    }
+    $queue->dispatchSync($jobClass, $data, $q);
 }
 
-function dispatch_later(string $jobClass, mixed $data = null, int $delay = 0, string $q = 'default'): void
+function dispatch_later(string $jobClass, mixed $data = null, int $delay = 0, ?string $q = null): void
 {
-    if (($_ENV['QUEUE'] ?? 'sync') === 'sync') {
+    $queue = queue();
+    $options = $queue->resolveDispatchOptions($jobClass, $q !== null ? ['queue' => $q] : []);
+
+    if ($options['connection'] === 'sync') {
         dispatch($jobClass, $data, $q);
         return;
     }
 
-    queue()->later($delay, $jobClass, $data, $q);
+    $queue->later($delay, $jobClass, $data, $q);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -839,11 +841,11 @@ function mailer(): Mailer
 
 /**
  * Returns the Queue singleton, or pushes a job when called with args.
- * queue()                      → Queue instance
- * queue('JobClass', $data)     → push job to default queue
- * queue('JobClass', $data, 'q')→ push job to named queue
+ * queue()                       → Queue instance
+ * queue('JobClass', $data)      → push usando a rota/config do job
+ * queue('JobClass', $data, 'q') → push para fila nomeada
  */
-function queue(string $job = '', mixed $data = null, string $q = 'default'): Queue
+function queue(string $job = '', mixed $data = null, ?string $q = null): Queue
 {
     $instance = app()->getContainer()->make(Queue::class);
     if ($job !== '') {

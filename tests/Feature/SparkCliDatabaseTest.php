@@ -230,6 +230,161 @@ PHP
         $this->assertStringContainsString('Pending', $result['output']);
     }
 
+    public function testApiSpecCommandGeneratesOpenApiFromRoutesValidationAndResponses(): void
+    {
+        mkdir($this->basePath . '/app/routes/api', 0777, true);
+
+        file_put_contents($this->basePath . '/app/models/ApiUser.php', <<<'PHP'
+<?php
+
+#[Hidden('email')]
+#[Rename('name', 'display_name')]
+class ApiUser extends Model
+{
+    protected string $table = 'users';
+    protected array $fillable = ['name', 'email', 'active', 'role'];
+    protected array $casts = ['active' => 'bool'];
+    protected bool $timestamps = false;
+}
+PHP
+        );
+
+        file_put_contents($this->basePath . '/app/routes/api/users.php', <<<'PHP'
+<?php
+get(fn() => ApiUser::query()->paginate(15))->guard('auth');
+
+post(function () {
+    $data = validate([
+        'name' => 'required|string|min:3|max:80',
+        'email' => 'required|email',
+        'active' => 'bool',
+        'role' => 'in:admin,editor,user',
+    ]);
+
+    return ApiUser::create($data);
+})->guard('auth');
+PHP
+        );
+
+        file_put_contents($this->basePath . '/app/routes/api/users.[id].php', <<<'PHP'
+<?php
+get(fn(ApiUser $user) => $user)->guard('auth');
+PHP
+        );
+
+        $result = $this->runSpark(['api:spec']);
+        $specPath = $this->basePath . '/storage/api/openapi.json';
+        $spec = json_decode((string) file_get_contents($specPath), true);
+
+        $this->assertSame(0, $result['exit_code'], $result['output']);
+        $this->assertFileExists($specPath);
+        $this->assertStringContainsString('OpenAPI spec generated', $result['output']);
+        $this->assertSame('3.1.0', $spec['openapi']);
+        $this->assertArrayHasKey('/api/users', $spec['paths']);
+        $this->assertArrayHasKey('/api/users/{id}', $spec['paths']);
+        $this->assertSame([['sessionAuth' => []]], $spec['paths']['/api/users']['get']['security']);
+        $this->assertSame(['$ref' => '#/components/schemas/ApiUser'], $spec['paths']['/api/users/{id}']['get']['responses']['200']['content']['application/json']['schema']);
+        $this->assertSame(['$ref' => '#/components/schemas/ApiUser'], $spec['paths']['/api/users']['post']['responses']['201']['content']['application/json']['schema']);
+        $this->assertSame('boolean', $spec['paths']['/api/users']['post']['requestBody']['content']['application/json']['schema']['properties']['active']['type']);
+        $this->assertSame(['admin', 'editor', 'user'], $spec['paths']['/api/users']['post']['requestBody']['content']['application/json']['schema']['properties']['role']['enum']);
+        $this->assertSame(['name', 'email'], $spec['paths']['/api/users']['post']['requestBody']['content']['application/json']['schema']['required']);
+        $this->assertArrayHasKey('data', $spec['paths']['/api/users']['get']['responses']['200']['content']['application/json']['schema']['properties']);
+        $this->assertArrayHasKey('links', $spec['paths']['/api/users']['get']['responses']['200']['content']['application/json']['schema']['properties']);
+        $this->assertArrayHasKey('meta', $spec['paths']['/api/users']['get']['responses']['200']['content']['application/json']['schema']['properties']);
+        $this->assertArrayHasKey('display_name', $spec['components']['schemas']['ApiUser']['properties']);
+        $this->assertArrayNotHasKey('email', $spec['components']['schemas']['ApiUser']['properties']);
+        $this->assertSame('integer', $spec['paths']['/api/users/{id}']['get']['parameters'][0]['schema']['type']);
+    }
+
+    public function testQueueCommandsSupportRoutingInspectRetryAndSelectiveClear(): void
+    {
+        mkdir($this->basePath . '/app/jobs', 0777, true);
+
+        file_put_contents($this->basePath . '/app/jobs/_queue.php', <<<'PHP'
+<?php
+
+return [
+    'routes' => [
+        CliQueueJob::class => [
+            'queue' => 'emails',
+            'tries' => 4,
+            'backoff' => [0],
+        ],
+        CliFailingQueueJob::class => [
+            'tries' => 2,
+            'backoff' => [0],
+        ],
+    ],
+];
+PHP
+        );
+
+        file_put_contents($this->basePath . '/app/jobs/CliQueueJob.php', <<<'PHP'
+<?php
+
+class CliQueueJob
+{
+    public function __construct(private mixed $data = null) {}
+
+    public function handle(): void
+    {
+        file_put_contents(base_path('storage/logs/cli-queue.log'), json_encode($this->data) . PHP_EOL, FILE_APPEND);
+    }
+}
+PHP
+        );
+
+        file_put_contents($this->basePath . '/app/jobs/CliFailingQueueJob.php', <<<'PHP'
+<?php
+
+class CliFailingQueueJob
+{
+    public int $tries = 2;
+    public array $backoff = [0];
+
+    public function __construct(private mixed $data = null) {}
+
+    public function handle(): void
+    {
+        throw new RuntimeException('CLI queue failed');
+    }
+}
+PHP
+        );
+
+        $queue = new Queue($this->basePath);
+        $queue->push('CliQueueJob', ['batch' => 'emails']);
+        $failedId = $queue->push('CliFailingQueueJob', ['batch' => 'default']);
+
+        $list = $this->runSpark(['queue:list']);
+        $workEmails = $this->runSpark(['queue:work', '--queue=emails', '--sleep=0', '--max-jobs=1']);
+        $workDefault = $this->runSpark(['queue:work', '--queue=default', '--sleep=0', '--max-jobs=2']);
+        $inspect = $this->runSpark(['queue:inspect', $failedId, '--queue=failed']);
+        $retry = $this->runSpark(['queue:retry', $failedId]);
+        $clear = $this->runSpark(['queue:clear', 'default', '--job=CliFailingQueueJob']);
+
+        $this->assertSame(0, $list['exit_code'], $list['output']);
+        $this->assertStringContainsString('emails', $list['output']);
+        $this->assertStringContainsString('default', $list['output']);
+
+        $this->assertSame(0, $workEmails['exit_code'], $workEmails['output']);
+        $this->assertStringContainsString('Processed CliQueueJob', $workEmails['output']);
+
+        $this->assertSame(0, $workDefault['exit_code'], $workDefault['output']);
+        $this->assertStringContainsString('Released CliFailingQueueJob', $workDefault['output']);
+        $this->assertStringContainsString('Failed CliFailingQueueJob', $workDefault['output']);
+
+        $this->assertSame(0, $inspect['exit_code'], $inspect['output']);
+        $this->assertStringContainsString('CliFailingQueueJob', $inspect['output']);
+        $this->assertStringContainsString('CLI queue failed', $inspect['output']);
+
+        $this->assertSame(0, $retry['exit_code'], $retry['output']);
+        $this->assertStringContainsString('Retried job', $retry['output']);
+
+        $this->assertSame(0, $clear['exit_code'], $clear['output']);
+        $this->assertStringContainsString('1 job(s) removed', $clear['output']);
+    }
+
     /**
      * @dataProvider externalDriverProvider
      */

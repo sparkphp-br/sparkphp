@@ -138,14 +138,14 @@ Sempre analise os seguintes documentos (vão criar uma orientação melhor do pr
   - Separar claramente route model binding (Model da URL) da resolução de services (DI do Container)
   - Definir base para policies/authorize sem perder a simplicidade do Spark
 
-- [ ] Task 5.5 — Geração de spec OpenAPI
+- [x] Task 5.5 — Geração de spec OpenAPI
   - Extrair spec OpenAPI a partir de rotas file-based, regras de validação e retornos dos handlers
   - Expor comando CLI `php spark api:spec` para gerar/atualizar a spec
   - Documentação automática a partir da spec gerada
 
 ## Fase 6 — Runtime, Dados e Filas (médio prazo)
 
-- [ ] Task 6.1 — Queue v2
+- [x] Task 6.1 — Queue v2
   - Adicionar roteamento por classe/job
   - Suportar `tries`, `backoff`, `timeout`, `failOnTimeout` e filas de falha mais ricas
   - Melhorar comandos CLI para retry, inspect e limpeza seletiva

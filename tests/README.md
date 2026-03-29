@@ -23,6 +23,7 @@ Os seguintes componentes são tratados como fronteira de estabilidade do framewo
 - `Router`
 - `Middleware`
 - `Request` / `Response`
+- `Queue`
 - `helpers.php`
 - `SparkInspector`
 

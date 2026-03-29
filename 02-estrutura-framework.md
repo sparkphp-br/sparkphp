@@ -84,6 +84,7 @@ Baseline atual do framework:
 │   │   └── order.completed.php
 │   │
 │   └── jobs/
+│       ├── _queue.php                         → manifesto opcional de defaults/rotas da fila
 │       ├── SendReport.php
 │       └── CleanExpiredTokens.php
 │
@@ -302,8 +303,16 @@ if (!session('user')) {
 
 | Arquivo | Classe | Uso |
 |---|---|---|
+| `app/jobs/_queue.php` | `—` | Defaults e roteamento por job para `dispatch()` / `queue:work` |
 | `app/jobs/SendReport.php` | `SendReport` | `dispatch(SendReport::class, $data)` |
 | `app/jobs/CleanExpiredTokens.php` | `CleanExpiredTokens` | `dispatch(CleanExpiredTokens::class)` |
+
+**Regras:**
+
+- Classes em `app/jobs/` sao despachadas por `dispatch()` / `dispatch_later()`.
+- `app/jobs/_queue.php` e opcional e centraliza `tries`, `backoff`, `timeout`, `fail_on_timeout` e fila por classe.
+- Propriedades / atributos da classe do job podem declarar esses mesmos metadados.
+- O worker CLI usa o mesmo manifesto, entao o comportamento fica igual no HTTP e no `queue:work`.
 
 ### Migrations
 

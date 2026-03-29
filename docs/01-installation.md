@@ -55,6 +55,7 @@ meu-projeto/
 │   ├── config/         ← arquivos de configuracao (retornam arrays)
 │   ├── events/         ← handlers de eventos (nome = evento)
 │   ├── jobs/           ← classes de jobs para filas
+│   │   └── _queue.php  ← manifesto opcional de defaults/rotas da fila
 │   ├── middleware/      ← middlewares (nome do arquivo = alias)
 │   ├── models/         ← models (nome do arquivo = nome da classe)
 │   ├── routes/         ← rotas (caminho do arquivo = URL, `_middleware.php` = middleware herdado)
@@ -157,6 +158,11 @@ config('app.missing', 'x');  // 'x' (default)
 ```
 
 Esses arquivos sao uma camada de conveniencia da aplicacao. Eles nao substituem o `.env` e nao funcionam como um diretorio central de wiring do framework.
+
+Para wiring file-based de jobs e filas, o Spark usa `app/jobs/_queue.php` em vez de
+`app/config/queue.php`. Isso mantem a regra de que `app/config/` continua opcional e
+voltado a valores da aplicacao, enquanto o comportamento operacional da fila fica perto
+dos proprios jobs.
 
 ## Producao e proxies
 

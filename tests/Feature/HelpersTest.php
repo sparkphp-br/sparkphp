@@ -52,6 +52,7 @@ PHP
         $container = new Container();
         $container->singleton(Cache::class, fn() => new Cache($this->basePath));
         $container->singleton(Logger::class, fn() => new Logger($this->basePath));
+        $container->singleton(Queue::class, fn() => new Queue($this->basePath));
         $container->singleton(Session::class, fn() => new Session($this->basePath));
         $container->singleton(Request::class, fn() => new Request());
 
@@ -211,6 +212,32 @@ PHP
         EventEmitter::off('helpers.event');
     }
 
+    public function testDispatchRespectsQueueManifestRoutingWhenQueueNameIsOmitted(): void
+    {
+        $_ENV['QUEUE'] = 'file';
+        mkdir($this->basePath . '/app/jobs', 0777, true);
+
+        file_put_contents($this->basePath . '/app/jobs/_queue.php', <<<'PHP'
+<?php
+
+return [
+    'routes' => [
+        HelperQueuedJob::class => [
+            'queue' => 'emails',
+            'tries' => 5,
+        ],
+    ],
+];
+PHP
+        );
+
+        dispatch(HelperQueuedJob::class, ['ok' => true]);
+
+        $this->assertCount(1, queue()->jobs('emails'));
+        $this->assertSame(0, queue()->size('default'));
+        $this->assertSame(5, queue()->jobs('emails')[0]['tries']);
+    }
+
     public function testUuidHelperGeneratesV4Uuid(): void
     {
         $uuid = uuid();
@@ -241,5 +268,14 @@ PHP
         }
 
         rmdir($path);
+    }
+}
+
+class HelperQueuedJob
+{
+    public function __construct(private mixed $data = null) {}
+
+    public function handle(): void
+    {
     }
 }

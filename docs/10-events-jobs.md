@@ -118,6 +118,10 @@ Jobs permitem processar tarefas pesadas em background, sem travar a resposta HTT
 QUEUE=sync
 ```
 
+`QUEUE=sync` continua sendo o default mais simples para desenvolvimento.
+Quando `QUEUE=file`, o Spark grava os payloads em `storage/queue/*.json` e o worker
+`php spark queue:work` passa a consumir esses arquivos.
+
 ### Criando um job
 
 ```bash
@@ -130,6 +134,12 @@ php spark make:job SendWelcomeEmail
 
 class SendWelcomeEmail
 {
+    public string $queue = 'mail';
+    public int $tries = 5;
+    public array|int $backoff = [10, 30, 90];
+    public int|float $timeout = 30;
+    public bool $failOnTimeout = true;
+
     public function __construct(private mixed $data = null) {}
 
     public function handle(): void
@@ -145,14 +155,91 @@ class SendWelcomeEmail
 }
 ```
 
+Essas propriedades sao opcionais. Se preferir, voce tambem pode usar atributos PHP:
+
+```php
+<?php
+
+#[OnQueue('mail')]
+#[Tries(5)]
+#[Backoff([10, 30, 90])]
+#[Timeout(30)]
+#[FailOnTimeout]
+class SendWelcomeEmail
+{
+    public function __construct(private mixed $data = null) {}
+
+    public function handle(): void
+    {
+        // ...
+    }
+}
+```
+
+### Roteamento central por job
+
+O lugar oficial para defaults e rotas de fila do projeto e `app/jobs/_queue.php`.
+Esse arquivo e carregado tanto no HTTP quanto no CLI, entao o comportamento fica
+consistente entre `dispatch()` e `queue:work`.
+
+```php
+<?php
+// app/jobs/_queue.php
+
+return [
+    'defaults' => [
+        'tries' => 3,
+        'backoff' => [60, 120, 300],
+        'timeout' => 0,
+        'fail_on_timeout' => false,
+    ],
+
+    'routes' => [
+        SendWelcomeEmail::class => [
+            'queue' => 'mail',
+            'tries' => 5,
+            'backoff' => [10, 30, 90],
+            'timeout' => 30,
+            'fail_on_timeout' => true,
+        ],
+
+        ProcessAvatar::class => [
+            'queue' => 'images',
+            'connection' => 'file',
+        ],
+    ],
+];
+```
+
+Precedencia usada pelo Spark:
+
+1. defaults internos do framework
+2. `app/jobs/_queue.php` em `defaults`
+3. propriedades / atributos do job
+4. `app/jobs/_queue.php` em `routes`
+5. overrides inline no `dispatch(..., q: ...)` ou `queue()->push(..., options: ...)`
+
+Se voce precisar sobrescrever em runtime, por exemplo em teste ou diagnostico local,
+tambem pode usar `Queue::route(...)` no mesmo processo:
+
+```php
+Queue::route(ProcessAvatar::class, queue: 'images-high', tries: 5);
+```
+
 ### Despachando jobs
 
 ```php
-// Executar na fila (ou imediatamente se QUEUE=sync)
+// Executar usando a rota/default do job
 dispatch(SendWelcomeEmail::class, ['user_id' => $user->id]);
 
-// Executar com delay (apenas QUEUE=file)
+// Forcar uma fila especifica nessa chamada
+dispatch(SendWelcomeEmail::class, ['user_id' => $user->id], 'priority');
+
+// Executar com delay
 dispatch_later(SendWelcomeEmail::class, ['user_id' => $user->id], 300); // 5 min
+
+// Enfileirar manualmente pelo helper da fila
+queue(SendWelcomeEmail::class, ['user_id' => $user->id]);
 ```
 
 ### Processando a fila
@@ -164,19 +251,49 @@ php spark queue:work
 # Com fila especifica
 php spark queue:work --queue=emails
 
-# Listar jobs pendentes
+# Listar filas com ready/delayed/total
 php spark queue:list
+
+# Inspecionar um job especifico
+php spark queue:inspect job_123 --queue=failed
+
+# Reprocessar um job com falha
+php spark queue:retry job_123
+
+# Reprocessar toda a fila de falhas
+php spark queue:retry --all
 
 # Limpar todos os jobs da fila
 php spark queue:clear
+
+# Limpar seletivamente por job ou id
+php spark queue:clear failed --job=SendWelcomeEmail
+php spark queue:clear default --id=job_123
 ```
 
 ### Como a fila funciona (driver file)
 
-1. `dispatch()` serializa o job e grava em `storage/queue/`
-2. `queue:work` le os arquivos, instancia a classe e chama `handle()`
-3. Se `handle()` lanca excecao, o job volta para a fila com backoff crescente
-4. Apos max tentativas, o job vai para a fila de falhas
+1. `dispatch()` resolve a configuracao final do job e grava o payload em `storage/queue/<fila>.json`
+2. `queue:work` le a fila, instancia a classe e chama `handle()`
+3. Se `handle()` falha, o job volta para a fila com o `backoff` configurado
+4. Se o timeout estoura e `failOnTimeout = true`, o job vai direto para a fila `failed`
+5. Quando esgota `tries`, o Spark move o payload completo para `storage/queue/failed.json`
+
+O payload persistido guarda metadados como:
+
+- `id`
+- `queue`
+- `attempts`
+- `tries`
+- `backoff`
+- `timeout`
+- `fail_on_timeout`
+- `available_at`
+- `last_error`
+- `failure_reason`
+- `failed_at`
+
+Isso permite retry, inspect e limpeza seletiva sem depender de banco ou pacote externo.
 
 ### Exemplo pratico: processamento de imagem
 
@@ -212,6 +329,31 @@ post(function () {
 
     return json(['message' => 'Upload recebido, processando...']);
 });
+```
+
+### DI no handle
+
+O Spark continua passando o payload pelo construtor, mas o metodo `handle()` tambem
+pode receber dependencias do container:
+
+```php
+<?php
+
+class SendDigest
+{
+    public function __construct(private mixed $data = null) {}
+
+    public function handle(Mailer $mailer, Logger $logger): void
+    {
+        $mailer
+            ->to($this->data['email'])
+            ->subject('Resumo diario')
+            ->view('emails.digest', ['items' => $this->data['items']])
+            ->send();
+
+        $logger->info('Digest enviado', ['email' => $this->data['email']]);
+    }
+}
 ```
 
 ### Combinando Events + Jobs

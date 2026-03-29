@@ -622,7 +622,7 @@
                 <h3>Mail & Jobs</h3>
                 <p>
                     Mailer SMTP embutido com API fluente. Despache jobs com <code>dispatch()</code>
-                    e processe em background via <code>queue:work</code>.
+                    e opere filas com retry, inspect e worker via <code>queue:work</code>.
                 </p>
             </article>
             </a>
@@ -663,7 +663,7 @@
             <a href="{{ route('docs.show', ['slug' => '10-events-jobs']) }}" class="capability-card-link">
             <article class="capability-card">
                 <strong>Jobs e eventos</strong>
-                <p>Despache trabalho assíncrono com <code>dispatch()</code> e eventos do domínio com <code>event()</code> — file-based, sem registro.</p>
+                <p>Despache trabalho assíncrono com <code>dispatch()</code>, use <code>app/jobs/_queue.php</code> para rotas por job e opere tudo via CLI — file-based, sem registro.</p>
                 <code>php spark queue:work</code>
             </article>
             </a>
