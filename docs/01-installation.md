@@ -63,6 +63,12 @@ Quando um starter e aplicado, o Spark grava um marcador `.spark-starter` na raiz
 projeto. Esse arquivo registra qual preset foi usado e em qual versao do framework ele
 foi aplicado.
 
+Se voce ainda esta decidindo se o Spark faz sentido para o seu contexto, leia tambem:
+
+- [SparkPHP vs Laravel](21-spark-vs-laravel.md)
+- [Guia de Adoção](22-adoption-guide.md)
+- [Migração do Laravel](24-migrating-from-laravel.md)
+
 ## Porta customizada
 
 ```bash

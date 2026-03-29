@@ -202,7 +202,7 @@ Sempre analise os seguintes documentos (vão criar uma orientação melhor do pr
   - Criar presets para API, SaaS, painel administrativo e documentação
   - Garantir que cada starter kit preserve a filosofia zero-config do SparkPHP
 
-- [ ] Task 8.3 — Documentação pública de nível produto
+- [x] Task 8.3 — Documentação pública de nível produto
   - Criar comparativos claros contra Laravel sem cair em feature parity cega
   - Publicar guias de adoção, benchmark e migração
   - Consolidar narrativa: mais simples, mais previsível, mais observável

@@ -109,6 +109,23 @@
         color: var(--brand);
     }
 
+    .docs-summary {
+        margin-top: 2rem;
+        padding: 1.4rem;
+        border-radius: 1.25rem;
+        border: 1px solid var(--border-soft);
+        background: var(--surface-1);
+        box-shadow: var(--shadow-soft);
+    }
+
+    :root[data-theme='light'] .docs-summary {
+        background: rgba(255, 255, 255, 0.84);
+    }
+
+    .docs-summary .docs-prose > *:first-child {
+        margin-top: 0;
+    }
+
     @media (max-width: 640px) {
         .docs-shell {
             padding: 1.25rem 1rem 4rem;
@@ -123,8 +140,16 @@
 <div class="docs-shell">
     <section class="docs-hero">
         <h1><span>Docs</span></h1>
-        <p>Guia completo do SparkPHP — do setup ao deploy.</p>
+        <p>Guia completo do SparkPHP — do setup ao deploy, com posicionamento de produto, adoção, benchmark e migração.</p>
     </section>
+
+    @if(!empty($content))
+        <section class="docs-summary">
+            <div class="docs-prose">
+                {!! $content !!}
+            </div>
+        </section>
+    @endif
 
     <div class="docs-grid">
         @foreach($docs as $idx => $doc)

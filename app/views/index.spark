@@ -495,7 +495,7 @@
                 <h1><span>Spark</span>PHP</h1>
 
                 <p>
-                    Write what matters. Menos boilerplate, mais produtividade.
+                    Write what matters. Mais simples, mais previsível, mais observável.
                 </p>
 
                 <div class="hero__actions">
@@ -716,6 +716,47 @@
                 <strong>AI sem fragmentação</strong>
                 <p>Use <code>ai()</code> com retrieval, vector search no banco, contexto pronto para RAG e traces nativos com tokens e custo.</p>
                 <code>ai()->retrieve('...')->from('documents')</code>
+            </article>
+            </a>
+        </div>
+    </section>
+
+    <section class="section">
+        <div class="section-head">
+            <h2>Produto, não só runtime</h2>
+            <p>O Spark também publica posição, benchmark, adoção e migração de forma explícita, para a escolha da stack ser técnica e honesta.</p>
+        </div>
+
+        <div class="capability-grid">
+            <a href="{{ route('docs.show', ['slug' => '21-spark-vs-laravel']) }}" class="capability-card-link">
+            <article class="capability-card">
+                <strong>Comparativo honesto</strong>
+                <p>Sem feature parity cega. Onde o Laravel ainda ganha, onde o Spark quer ganhar e quando cada um faz mais sentido.</p>
+                <code>docs/21-spark-vs-laravel.md</code>
+            </article>
+            </a>
+
+            <a href="{{ route('docs.show', ['slug' => '22-adoption-guide']) }}" class="capability-card-link">
+            <article class="capability-card">
+                <strong>Adoção guiada</strong>
+                <p>Critérios práticos para piloto, escolha de starter, governança de time e validação de risco antes da adoção.</p>
+                <code>docs/22-adoption-guide.md</code>
+            </article>
+            </a>
+
+            <a href="{{ route('docs.show', ['slug' => '23-benchmarking']) }}" class="capability-card-link">
+            <article class="capability-card">
+                <strong>Benchmark responsável</strong>
+                <p>Como comparar Spark e Laravel com o mesmo workload, o mesmo ambiente e perguntas de engenharia que realmente importam.</p>
+                <code>php spark benchmark</code>
+            </article>
+            </a>
+
+            <a href="{{ route('docs.show', ['slug' => '24-migrating-from-laravel']) }}" class="capability-card-link">
+            <article class="capability-card">
+                <strong>Migração com critério</strong>
+                <p>Quando migrar, quando não migrar e como usar Spark em APIs, painéis e serviços novos sem reescrever no susto.</p>
+                <code>docs/24-migrating-from-laravel.md</code>
             </article>
             </a>
         </div>

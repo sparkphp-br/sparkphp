@@ -4,8 +4,10 @@
 
 Baseline atual: PHP 8.3+, SQLite 3.35+, MySQL 8.0+ e PostgreSQL 13+.
 
-Versao publicada atual: `0.8.0` (`0.8.x`). O historico de releases fica em
+Versao publicada atual: `0.9.0` (`0.9.x`). O historico de releases fica em
 `CHANGELOG.md` na raiz do projeto.
+
+Narrativa publica atual do produto: **mais simples, mais previsivel, mais observavel**.
 
 ---
 
@@ -33,6 +35,10 @@ Versao publicada atual: `0.8.0` (`0.8.x`). O historico de releases fica em
 | 18 | [Semantic Search & Retrieval](18-search.md)    | Busca vetorial, `pgvector`, retrieval em `ai()` e fluxo de RAG curto |
 | 19 | [AI Observability](19-ai-observability.md)     | Inspector, mascaramento de traces, AI status e smoke test     |
 | 20 | [Starter Kits](20-starter-kits.md)             | Presets first-party para API, SaaS, admin e documentacao      |
+| 21 | [SparkPHP vs Laravel](21-spark-vs-laravel.md)  | Comparativo honesto por filosofia, operacao e trade-offs      |
+| 22 | [Guia de Adoção](22-adoption-guide.md)         | Como validar, pilotar e adotar SparkPHP com risco controlado  |
+| 23 | [Benchmarks](23-benchmarking.md)               | Como medir Spark com honestidade e usar o CLI de benchmark    |
+| 24 | [Migração do Laravel](24-migrating-from-laravel.md) | Quando migrar, quando nao migrar e como fazer com segurança |
 
 ---
 
@@ -100,3 +106,13 @@ delete(fn(User $user) => $user->delete());
 4. **Smart defaults** — retorno de array vira JSON ou view automaticamente.
 5. **Performance** — cache agressivo em production, lazy loading em tudo.
 6. **PHP puro** — sem dependencias externas. Composer e opcional (dev tools).
+
+## Guias de produto
+
+Se a sua pergunta nao e "como usar um helper", e sim "quando o Spark faz sentido?",
+comece por aqui:
+
+- [SparkPHP vs Laravel](21-spark-vs-laravel.md)
+- [Guia de Adoção](22-adoption-guide.md)
+- [Benchmarks](23-benchmarking.md)
+- [Migração do Laravel](24-migrating-from-laravel.md)

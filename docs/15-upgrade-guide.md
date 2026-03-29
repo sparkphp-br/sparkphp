@@ -2,6 +2,9 @@
 
 Este guia concentra o processo oficial de upgrade do SparkPHP.
 
+Se a sua pergunta nao e "como atualizar", mas sim "devo migrar uma base Laravel para
+Spark?", comece antes por [24-migrating-from-laravel.md](24-migrating-from-laravel.md).
+
 ## Regra geral
 
 Antes de atualizar o framework:

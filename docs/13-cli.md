@@ -379,8 +379,8 @@ php spark --version
 php spark -V
 
 # Saida:
-#   SparkPHP v0.8.0 (0.8.x)
-#   SparkPHP environment report  v0.8.0
+#   SparkPHP v0.9.0 (0.9.x)
+#   SparkPHP environment report  v0.9.0
 #   PHP 8.3.0
 #   Environment: production
 #   Database: mysql (sparkphp@localhost)

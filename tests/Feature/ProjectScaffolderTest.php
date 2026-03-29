@@ -24,7 +24,7 @@ SPARK_AI_MASK=true
 ENV
         );
         file_put_contents($this->basePath . '/composer.json', '{"name":"sparkphp/test"}');
-        file_put_contents($this->basePath . '/VERSION', '0.8.0');
+        file_put_contents($this->basePath . '/VERSION', '0.9.0');
         file_put_contents($this->basePath . '/CHANGELOG.md', '# Changelog');
         file_put_contents($this->basePath . '/spark', "#!/usr/bin/env php\n<?php\n");
         mkdir($this->basePath . '/docs', 0777, true);
@@ -119,7 +119,7 @@ PHP
         $this->writeFile($source . '/.env.example', "APP_NAME=SparkPHP\nAPP_ENV=dev\nAPP_KEY=change-me-to-a-random-secret-32-chars\nAI_DRIVER=fake\n");
         $this->writeFile($source . '/.gitignore', "/vendor\n/.env\n");
         $this->writeFile($source . '/composer.json', '{"name":"sparkphp/test"}');
-        $this->writeFile($source . '/VERSION', '0.8.0');
+        $this->writeFile($source . '/VERSION', '0.9.0');
         $this->writeFile($source . '/CHANGELOG.md', '# Changelog');
         $this->writeFile($source . '/spark', "#!/usr/bin/env php\n<?php echo 'spark';\n");
         $this->writeFile($source . '/public/index.php', '<?php echo "hello";');
@@ -197,7 +197,7 @@ PHP
 
         $this->writeFile($source . '/.env.example', "APP_NAME=SparkPHP\nAPP_ENV=dev\nAPP_KEY=change-me-to-a-random-secret-32-chars\n");
         $this->writeFile($source . '/composer.json', '{"name":"sparkphp/test"}');
-        $this->writeFile($source . '/VERSION', '0.8.0');
+        $this->writeFile($source . '/VERSION', '0.9.0');
         $this->writeFile($source . '/CHANGELOG.md', '# Changelog');
         $this->writeFile($source . '/spark', "#!/usr/bin/env php\n<?php echo 'spark';\n");
         $this->writeFile($source . '/docs/README.md', '# Docs');

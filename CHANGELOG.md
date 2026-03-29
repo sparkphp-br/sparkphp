@@ -2,6 +2,20 @@
 
 Todas as mudancas publicas relevantes do SparkPHP passam a ser registradas aqui.
 
+## [0.9.0] - 2026-03-29
+
+### Added
+
+- `README.md` raiz com posicionamento publico do produto, quick start e links de decisao.
+- comparativo honesto com Laravel em `docs/21-spark-vs-laravel.md`.
+- guias novos de adocao, benchmark e migracao em `docs/22-adoption-guide.md`, `docs/23-benchmarking.md` e `docs/24-migrating-from-laravel.md`.
+
+### Changed
+
+- `docs/README.md` e a landing agora tratam explicitamente o Spark como framework mais simples, mais previsivel e mais observavel.
+- o portal de docs passou a renderizar o resumo editorial do `docs/README.md` na index.
+- versao publicada do framework avancou para `0.9.0`.
+
 ## [0.8.0] - 2026-03-29
 
 ### Added
