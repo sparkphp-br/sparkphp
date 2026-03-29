@@ -2,6 +2,22 @@
 
 Todas as mudancas publicas relevantes do SparkPHP passam a ser registradas aqui.
 
+## [0.5.0] - 2026-03-29
+
+### Added
+
+- vector search first-party no `QueryBuilder` com `nearestTo()`, `whereVectorSimilarTo()`, `selectVectorSimilarity()` e `orderByVectorSimilarity()`.
+- conveniencia em `Model` via `nearestTo()` e `semanticSearch()`.
+- retrieval nativo no fluxo de AI via `ai()->retrieve(...)->from(...)->get()`.
+- `AiRetrievalResult` com `toPromptContext()` para encurtar fluxos de RAG.
+- documentacao dedicada de semantic search e retrieval em `docs/18-search.md`.
+
+### Changed
+
+- consultas vetoriais agora usam expressao `pgvector` em PostgreSQL e fallback em memoria no SQLite/MySQL para DX local e suite.
+- `docs/05-database.md`, `docs/16-ai.md` e `docs/17-ai-conventions.md` passaram a cobrir vector search e retrieval.
+- versao publicada do framework avancou para `0.5.0`.
+
 ## [0.4.0] - 2026-03-29
 
 ### Added

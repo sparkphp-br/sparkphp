@@ -511,6 +511,20 @@ abstract class Model implements \JsonSerializable
         return static::query()->withCount(...$relations);
     }
 
+    public static function nearestTo(string $column, string|array $input, string $metric = 'cosine'): QueryBuilder
+    {
+        return static::query()->nearestTo($column, $input, $metric);
+    }
+
+    public static function semanticSearch(
+        string $column,
+        string|array $input,
+        ?float $threshold = null,
+        string $metric = 'cosine'
+    ): QueryBuilder {
+        return static::query()->whereVectorSimilarTo($column, $input, $threshold, $metric);
+    }
+
     /**
      * Serialize a model, model collection, or paginator for API responses.
      *

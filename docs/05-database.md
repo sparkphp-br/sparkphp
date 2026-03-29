@@ -8,7 +8,7 @@ O SparkPHP inclui um ORM completo com QueryBuilder, Models, Migrations e Seeds. 
 |---|---|---|
 | SQLite | 3.35+ | baseline escolhida por causa de `ALTER TABLE ... DROP COLUMN` e `RENAME COLUMN` |
 | MySQL | 8.0+ | `JSON`, `utf8mb4`, `AFTER` e comments de coluna funcionam melhor nessa linha |
-| PostgreSQL | 13+ | `JSONB`, `UUID` nativo e DDL moderno coberto pela grammar atual |
+| PostgreSQL | 13+ | `JSONB`, `UUID` nativo, DDL moderno e alvo inicial para `pgvector` |
 
 ### Notas de compatibilidade
 
@@ -18,6 +18,7 @@ O SparkPHP inclui um ORM completo com QueryBuilder, Models, Migrations e Seeds. 
   - `after()` e `comment()` sao especificos de MySQL
   - `uuid()` vira tipo nativo no PostgreSQL e string nos demais drivers
   - `json()` vira `JSONB` no PostgreSQL e `TEXT` no SQLite
+  - vector search usa `pgvector` em PostgreSQL e fallback em memoria nos demais drivers
 
 ## Configuracao
 
@@ -178,6 +179,44 @@ db('posts')->oldest()->get();              // ORDER BY created_at ASC
 db('posts')->latest('published_at')->get();// coluna customizada
 db('posts')->orderByDesc('created_at')->get();  // equivalente explicito
 ```
+
+### Semantic / Vector Search
+
+O `QueryBuilder` agora tambem consegue fazer ranking por similaridade vetorial.
+
+```php
+$documents = db('documents')
+    ->select('id', 'title', 'content')
+    ->selectVectorSimilarity('embedding', 'Como configuro cache?')
+    ->whereVectorSimilarTo('embedding', 'Como configuro cache?')
+    ->limit(5)
+    ->get();
+```
+
+Atalhos disponiveis:
+
+```php
+db('documents')->nearestTo('embedding', 'SparkPHP vector search')->limit(3)->get();
+
+db('documents')
+    ->orderByVectorSimilarity('embedding', 'SparkPHP vector search')
+    ->limit(10)
+    ->get();
+```
+
+Com ORM:
+
+```php
+$articles = Article::semanticSearch('embedding', 'Como configuro cache?')
+    ->limit(5)
+    ->get();
+```
+
+Observacoes:
+
+- em PostgreSQL, o alvo operacional e `pgvector`
+- em SQLite/MySQL, o Spark usa fallback em memoria a partir de vetores serializados
+- `selectVectorSimilarity(...)` expõe `vector_score` no item retornado
 
 ### Agregacoes
 

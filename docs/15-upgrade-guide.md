@@ -105,6 +105,24 @@ Impacto:
 Se o projeto ja tinha convencoes proprias para AI, a migracao recomendada e mover
 primeiro prompts e tools reutilizaveis para `app/ai/*`, depois consolidar os agentes.
 
+### Semantic search e retrieval first-party
+
+O Spark agora conecta embeddings, banco e AI flow sem pacote adicional:
+
+- `db(...)->whereVectorSimilarTo(...)`
+- `db(...)->selectVectorSimilarity(...)`
+- `Model::semanticSearch(...)`
+- `ai()->retrieve(...)->from(...)->get()`
+
+Impacto:
+
+- colunas de embedding podem continuar como JSON/texto em dev, com ranking em memoria
+- em PostgreSQL, a intencao e mapear a consulta para `pgvector`
+- fluxos de RAG simples agora podem nascer so com `QueryBuilder` + `ai()`
+
+Se o projeto ja tinha retrieval artesanal, a migracao recomendada e mover primeiro a
+busca para `QueryBuilder`, depois substituir o glue code por `ai()->retrieve(...)`.
+
 ### Baseline moderna do framework
 
 A baseline oficial do Spark passou a ser:

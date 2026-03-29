@@ -432,6 +432,12 @@ final class AiClient
             ->when($input !== null, fn(AiEmbeddingOperation $operation) => $operation->input($input));
     }
 
+    public function retrieve(string|array|null $input = null): AiRetrievalOperation
+    {
+        return (new AiRetrievalOperation($this->provider, $this->driver, $this->registry))
+            ->when($input !== null, fn(AiRetrievalOperation $operation) => $operation->query($input));
+    }
+
     public function image(?string $prompt = null): AiImageOperation
     {
         return (new AiImageOperation($this->provider, $this->driver, $this->registry))
@@ -649,6 +655,167 @@ final class AiEmbeddingOperation extends AiOperation
             model: $this->defaultModel('AI_EMBEDDING_MODEL', 'spark-embedding'),
             options: $this->options,
         ));
+    }
+}
+
+final class AiRetrievalOperation extends AiOperation
+{
+    private string|array|null $input = null;
+    private string|QueryBuilder|null $source = null;
+    private string $vectorColumn = 'embedding';
+    private string $metric = 'cosine';
+    private ?float $threshold = null;
+    private int $limit = 3;
+    private array $columns = [];
+
+    public function query(string|array $input): static
+    {
+        $this->input = $input;
+
+        return $this;
+    }
+
+    public function from(string|QueryBuilder $source, string $vectorColumn = 'embedding'): static
+    {
+        $this->source = $source;
+        $this->vectorColumn = $vectorColumn;
+
+        return $this;
+    }
+
+    public function column(string $vectorColumn): static
+    {
+        $this->vectorColumn = $vectorColumn;
+
+        return $this;
+    }
+
+    public function metric(string $metric): static
+    {
+        $this->metric = $metric;
+
+        return $this;
+    }
+
+    public function threshold(float $threshold): static
+    {
+        $this->threshold = $threshold;
+
+        return $this;
+    }
+
+    public function take(int $limit): static
+    {
+        $this->limit = max(1, $limit);
+
+        return $this;
+    }
+
+    public function select(array|string ...$columns): static
+    {
+        if (count($columns) === 1 && is_array($columns[0])) {
+            $this->columns = array_values($columns[0]);
+
+            return $this;
+        }
+
+        $normalized = [];
+
+        foreach ($columns as $column) {
+            if (is_array($column)) {
+                $normalized = array_merge($normalized, array_values($column));
+                continue;
+            }
+
+            $normalized[] = $column;
+        }
+
+        $this->columns = $normalized;
+
+        return $this;
+    }
+
+    public function get(): AiRetrievalResult
+    {
+        if ($this->input === null) {
+            throw new AiException('AI retrieval requires a query string or vector.');
+        }
+
+        if ($this->source === null) {
+            throw new AiException('AI retrieval requires a source table, model or QueryBuilder.');
+        }
+
+        $builder = $this->resolveBuilder();
+        $vector = $this->resolveQueryVector();
+
+        if ($this->columns !== []) {
+            $builder->select($this->columns);
+        }
+
+        $items = $builder
+            ->selectVectorSimilarity($this->vectorColumn, $vector, 'vector_score', $this->metric)
+            ->whereVectorSimilarTo($this->vectorColumn, $vector, $this->threshold, $this->metric)
+            ->limit($this->limit)
+            ->get();
+
+        return new AiRetrievalResult(
+            items: $items,
+            provider: $this->provider->name(),
+            model: $this->defaultModel('AI_EMBEDDING_MODEL', 'spark-embedding'),
+            meta: [
+                'metric' => $this->metric,
+                'vector_column' => $this->vectorColumn,
+                'threshold' => $this->threshold,
+                'limit' => $this->limit,
+                'source' => $this->describeSource(),
+            ],
+        );
+    }
+
+    private function resolveBuilder(): QueryBuilder
+    {
+        if ($this->source instanceof QueryBuilder) {
+            return clone $this->source;
+        }
+
+        if (class_exists($this->source) && is_subclass_of($this->source, Model::class)) {
+            /** @var class-string<Model> $model */
+            $model = $this->source;
+
+            return $model::query();
+        }
+
+        return db($this->source);
+    }
+
+    private function describeSource(): string
+    {
+        if ($this->source instanceof QueryBuilder) {
+            return 'query:' . $this->source->toSql();
+        }
+
+        return (string) $this->source;
+    }
+
+    private function resolveQueryVector(): array
+    {
+        if (is_array($this->input)) {
+            foreach ($this->input as $value) {
+                if (!is_numeric($value)) {
+                    throw new AiException('AI retrieval vectors must contain only numeric dimensions.');
+                }
+            }
+
+            return array_map(static fn(mixed $value): float => (float) $value, array_values($this->input));
+        }
+
+        $response = $this->provider->embeddings(new AiEmbeddingRequest(
+            input: [$this->input],
+            model: $this->defaultModel('AI_EMBEDDING_MODEL', 'spark-embedding'),
+            options: $this->options,
+        ));
+
+        return array_map(static fn(mixed $value): float => (float) $value, $response->first());
     }
 }
 
@@ -1041,6 +1208,73 @@ final readonly class AiAgentRequest
 interface AiResponse extends JsonSerializable
 {
     public function toArray(): array;
+}
+
+final readonly class AiRetrievalResult implements JsonSerializable
+{
+    public function __construct(
+        public array $items,
+        public string $provider,
+        public string $model,
+        public array $meta = [],
+    ) {
+    }
+
+    public function first(): mixed
+    {
+        return $this->items[0] ?? null;
+    }
+
+    public function toPromptContext(string|callable $formatter = 'content'): string
+    {
+        $chunks = [];
+
+        foreach ($this->items as $index => $item) {
+            if (is_callable($formatter)) {
+                $text = $formatter($item, $index);
+            } elseif (is_object($item)) {
+                $text = $item->{$formatter} ?? json_encode($this->normalizeItem($item), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            } elseif (is_array($item)) {
+                $text = $item[$formatter] ?? json_encode($item, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            } else {
+                $text = (string) $item;
+            }
+
+            $score = is_object($item) ? ($item->vector_score ?? null) : ($item['vector_score'] ?? null);
+            $prefix = $score !== null ? '[' . number_format((float) $score, 4, '.', '') . '] ' : '';
+            $chunks[] = $prefix . trim((string) $text);
+        }
+
+        return implode("\n\n", array_filter($chunks, static fn(string $chunk): bool => $chunk !== ''));
+    }
+
+    public function toArray(): array
+    {
+        return [
+            'items' => array_map(fn(mixed $item): mixed => $this->normalizeItem($item), $this->items),
+            'provider' => $this->provider,
+            'model' => $this->model,
+            'meta' => $this->meta,
+        ];
+    }
+
+    public function jsonSerialize(): array
+    {
+        return $this->toArray();
+    }
+
+    private function normalizeItem(mixed $item): mixed
+    {
+        if ($item instanceof Model) {
+            return $item->toApi();
+        }
+
+        if (is_object($item)) {
+            return (array) $item;
+        }
+
+        return $item;
+    }
 }
 
 final readonly class AiTextResponse implements AiResponse

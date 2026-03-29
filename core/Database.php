@@ -249,6 +249,9 @@ class QueryBuilder
 
     /** @var array<string, callable|null> */
     private array $withCounts = [];
+    private ?array $vectorSearch = null;
+    private ?array $vectorSelect = null;
+    private ?array $vectorOrder = null;
 
     public function __construct(Database $db, string $table)
     {
@@ -489,6 +492,58 @@ class QueryBuilder
         return $this;
     }
 
+    public function nearestTo(string $column, string|array $input, string $metric = 'cosine'): static
+    {
+        $query = $this->buildVectorQuery($column, $input, $metric);
+        $query['threshold'] = null;
+        $this->vectorSearch = $query;
+        $this->vectorOrder ??= array_merge($query, ['direction' => 'DESC']);
+
+        return $this;
+    }
+
+    public function whereVectorSimilarTo(
+        string $column,
+        string|array $input,
+        ?float $threshold = null,
+        string $metric = 'cosine'
+    ): static {
+        $query = $this->buildVectorQuery($column, $input, $metric);
+        $query['threshold'] = $threshold;
+        $this->vectorSearch = $query;
+        $this->vectorOrder ??= array_merge($query, ['direction' => 'DESC']);
+
+        return $this;
+    }
+
+    public function selectVectorSimilarity(
+        string $column,
+        string|array $input,
+        string $alias = 'vector_score',
+        string $metric = 'cosine'
+    ): static {
+        $this->vectorSelect = array_merge(
+            $this->buildVectorQuery($column, $input, $metric),
+            ['alias' => $alias]
+        );
+
+        return $this;
+    }
+
+    public function orderByVectorSimilarity(
+        string $column,
+        string|array $input,
+        string $direction = 'DESC',
+        string $metric = 'cosine'
+    ): static {
+        $this->vectorOrder = array_merge(
+            $this->buildVectorQuery($column, $input, $metric),
+            ['direction' => strtoupper($direction) === 'ASC' ? 'ASC' : 'DESC']
+        );
+
+        return $this;
+    }
+
     // ─────────────────────────────────────────────
     // Conditional clauses
     // ─────────────────────────────────────────────
@@ -541,7 +596,7 @@ class QueryBuilder
      */
     public function join(string $table, string $first, string $operator, string $second): static
     {
-        $this->joins[] = "INNER JOIN `{$table}` ON {$first} {$operator} {$second}";
+        $this->joins[] = 'INNER JOIN ' . $this->wrapTable($table) . " ON {$first} {$operator} {$second}";
         return $this;
     }
 
@@ -558,7 +613,7 @@ class QueryBuilder
      */
     public function leftJoin(string $table, string $first, string $operator, string $second): static
     {
-        $this->joins[] = "LEFT JOIN `{$table}` ON {$first} {$operator} {$second}";
+        $this->joins[] = 'LEFT JOIN ' . $this->wrapTable($table) . " ON {$first} {$operator} {$second}";
         return $this;
     }
 
@@ -573,7 +628,7 @@ class QueryBuilder
      */
     public function rightJoin(string $table, string $first, string $operator, string $second): static
     {
-        $this->joins[] = "RIGHT JOIN `{$table}` ON {$first} {$operator} {$second}";
+        $this->joins[] = 'RIGHT JOIN ' . $this->wrapTable($table) . " ON {$first} {$operator} {$second}";
         return $this;
     }
 
@@ -728,10 +783,14 @@ class QueryBuilder
      */
     public function get(): array
     {
-        [$sql, $bindings] = $this->buildSelect();
-        $stmt = $this->db->execute($sql, $bindings);
-        $rows = $stmt->fetchAll();
-        $results = $this->hydrateAll($rows);
+        if ($this->needsVectorPostProcessing()) {
+            $results = $this->hydrateAll($this->executeVectorPostProcessedRows());
+        } else {
+            [$sql, $bindings] = $this->buildSelect();
+            $stmt = $this->db->execute($sql, $bindings);
+            $rows = $stmt->fetchAll();
+            $results = $this->hydrateAll($rows);
+        }
 
         // Eager load relationships
         if (!empty($this->eagerLoads) && !empty($results) && $this->modelClass) {
@@ -875,8 +934,17 @@ class QueryBuilder
      */
     public function count(): int
     {
+        if ($this->needsVectorPostProcessing() && (($this->vectorSearch['threshold'] ?? null) !== null)) {
+            return count($this->executeVectorPostProcessedRows(false));
+        }
+
         [$w, $b] = $this->buildWhereWithJoins();
-        $sql = "SELECT COUNT(*) as cnt FROM `{$this->table}`" . $this->buildJoinString() . $w;
+
+        if ($this->shouldUseSqlVectorSearch() && (($this->vectorSearch['threshold'] ?? null) !== null)) {
+            $w = $this->appendVectorWhereClause($w, $this->vectorSearch);
+        }
+
+        $sql = 'SELECT COUNT(*) as cnt FROM ' . $this->wrapTable($this->table) . $this->buildJoinString() . $w;
         $stmt = $this->db->execute($sql, $b);
         return (int) $stmt->fetchColumn();
     }
@@ -891,7 +959,7 @@ class QueryBuilder
     public function sum(string $column): float
     {
         [$w, $b] = $this->buildWhereWithJoins();
-        $sql = "SELECT SUM(" . $this->wrapIdentifier($column) . ") FROM `{$this->table}`" . $this->buildJoinString() . $w;
+        $sql = 'SELECT SUM(' . $this->wrapIdentifier($column) . ') FROM ' . $this->wrapTable($this->table) . $this->buildJoinString() . $w;
         $stmt = $this->db->execute($sql, $b);
         return (float) ($stmt->fetchColumn() ?? 0);
     }
@@ -907,7 +975,7 @@ class QueryBuilder
     public function avg(string $column): float
     {
         [$w, $b] = $this->buildWhereWithJoins();
-        $sql = "SELECT AVG(" . $this->wrapIdentifier($column) . ") FROM `{$this->table}`" . $this->buildJoinString() . $w;
+        $sql = 'SELECT AVG(' . $this->wrapIdentifier($column) . ') FROM ' . $this->wrapTable($this->table) . $this->buildJoinString() . $w;
         $stmt = $this->db->execute($sql, $b);
         return (float) ($stmt->fetchColumn() ?? 0);
     }
@@ -922,7 +990,7 @@ class QueryBuilder
     public function max(string $column): mixed
     {
         [$w, $b] = $this->buildWhereWithJoins();
-        $sql = "SELECT MAX(" . $this->wrapIdentifier($column) . ") FROM `{$this->table}`" . $this->buildJoinString() . $w;
+        $sql = 'SELECT MAX(' . $this->wrapIdentifier($column) . ') FROM ' . $this->wrapTable($this->table) . $this->buildJoinString() . $w;
         $stmt = $this->db->execute($sql, $b);
         return $stmt->fetchColumn();
     }
@@ -937,7 +1005,7 @@ class QueryBuilder
     public function min(string $column): mixed
     {
         [$w, $b] = $this->buildWhereWithJoins();
-        $sql = "SELECT MIN(" . $this->wrapIdentifier($column) . ") FROM `{$this->table}`" . $this->buildJoinString() . $w;
+        $sql = 'SELECT MIN(' . $this->wrapIdentifier($column) . ') FROM ' . $this->wrapTable($this->table) . $this->buildJoinString() . $w;
         $stmt = $this->db->execute($sql, $b);
         return $stmt->fetchColumn();
     }
@@ -1082,9 +1150,9 @@ class QueryBuilder
      */
     public function create(array $data): mixed
     {
-        $cols = implode(', ', array_map(fn($c) => "`{$c}`", array_keys($data)));
+        $cols = implode(', ', array_map(fn($c) => $this->wrapIdentifier((string) $c), array_keys($data)));
         $phs  = implode(', ', array_fill(0, count($data), '?'));
-        $sql  = "INSERT INTO `{$this->table}` ({$cols}) VALUES ({$phs})";
+        $sql  = 'INSERT INTO ' . $this->wrapTable($this->table) . " ({$cols}) VALUES ({$phs})";
 
         $this->db->execute($sql, array_values($data));
         $id = $this->db->lastInsertId();
@@ -1101,9 +1169,9 @@ class QueryBuilder
      */
     public function insert(array $data): bool
     {
-        $cols = implode(', ', array_map(fn($c) => "`{$c}`", array_keys($data)));
+        $cols = implode(', ', array_map(fn($c) => $this->wrapIdentifier((string) $c), array_keys($data)));
         $phs  = implode(', ', array_fill(0, count($data), '?'));
-        $sql  = "INSERT INTO `{$this->table}` ({$cols}) VALUES ({$phs})";
+        $sql  = 'INSERT INTO ' . $this->wrapTable($this->table) . " ({$cols}) VALUES ({$phs})";
         $this->db->execute($sql, array_values($data));
         return true;
     }
@@ -1126,10 +1194,10 @@ class QueryBuilder
         }
 
         $columns  = array_keys($rows[0]);
-        $cols     = implode(', ', array_map(fn($c) => "`{$c}`", $columns));
+        $cols     = implode(', ', array_map(fn($c) => $this->wrapIdentifier((string) $c), $columns));
         $singlePh = '(' . implode(', ', array_fill(0, count($columns), '?')) . ')';
         $allPh    = implode(', ', array_fill(0, count($rows), $singlePh));
-        $sql      = "INSERT INTO `{$this->table}` ({$cols}) VALUES {$allPh}";
+        $sql      = 'INSERT INTO ' . $this->wrapTable($this->table) . " ({$cols}) VALUES {$allPh}";
 
         $bindings = [];
         foreach ($rows as $row) {
@@ -1151,9 +1219,9 @@ class QueryBuilder
      */
     public function update(array $data): int
     {
-        $set      = implode(', ', array_map(fn($c) => "`{$c}` = ?", array_keys($data)));
+        $set      = implode(', ', array_map(fn($c) => $this->wrapIdentifier((string) $c) . ' = ?', array_keys($data)));
         $where    = $this->buildWhere();
-        $sql      = "UPDATE `{$this->table}` SET {$set}" . $where[0];
+        $sql      = 'UPDATE ' . $this->wrapTable($this->table) . " SET {$set}" . $where[0];
         $bindings = array_merge(array_values($data), $where[1]);
         $stmt     = $this->db->execute($sql, $bindings);
         return $stmt->rowCount();
@@ -1239,7 +1307,7 @@ class QueryBuilder
     public function delete(): int
     {
         $where = $this->buildWhere();
-        $sql   = "DELETE FROM `{$this->table}`" . $where[0];
+        $sql   = 'DELETE FROM ' . $this->wrapTable($this->table) . $where[0];
         $stmt  = $this->db->execute($sql, $where[1]);
         return $stmt->rowCount();
     }
@@ -1255,7 +1323,8 @@ class QueryBuilder
     public function increment(string $column, int $by = 1): int
     {
         $where = $this->buildWhere();
-        $sql   = "UPDATE `{$this->table}` SET `{$column}` = `{$column}` + ?" . $where[0];
+        $wrapped = $this->wrapIdentifier($column);
+        $sql   = 'UPDATE ' . $this->wrapTable($this->table) . " SET {$wrapped} = {$wrapped} + ?" . $where[0];
         $stmt  = $this->db->execute($sql, array_merge([$by], $where[1]));
         return $stmt->rowCount();
     }
@@ -1330,17 +1399,25 @@ class QueryBuilder
     // SQL building
     // ─────────────────────────────────────────────
 
-    private function buildSelect(): array
+    private function buildSelect(bool $applyVectorSql = true, bool $applyLimitOffset = true, array $extraSelects = []): array
     {
-        $cols     = implode(', ', $this->selects);
-        $sql      = "SELECT {$cols} FROM `{$this->table}`";
+        $selects = array_merge($this->selects, $extraSelects);
+
+        if ($applyVectorSql && $this->shouldUseSqlVectorSearch() && $this->vectorSelect !== null) {
+            $selects[] = $this->vectorScoreSql($this->vectorSelect) . ' AS ' . $this->wrapIdentifier($this->vectorSelect['alias']);
+        }
+
+        $cols = implode(', ', $selects);
+        $sql = 'SELECT ' . $cols . ' FROM ' . $this->wrapTable($this->table);
 
         // Joins
         $sql .= $this->buildJoinString();
 
         // Where
         [$w, $b]  = $this->buildWhere();
-        $sql     .= $w;
+        $sql     .= $applyVectorSql && $this->shouldUseSqlVectorSearch() && $this->vectorSearch !== null
+            ? $this->appendVectorWhereClause($w, $this->vectorSearch)
+            : $w;
 
         // Group By
         if ($this->groupByClause) {
@@ -1354,15 +1431,22 @@ class QueryBuilder
         }
 
         // Order By
-        if ($this->orderBy) {
-            $sql .= " ORDER BY {$this->orderBy}";
+        $orderBy = $this->orderBy;
+
+        if ($applyVectorSql && $this->shouldUseSqlVectorSearch() && $this->vectorOrder !== null) {
+            $vectorOrder = $this->vectorScoreSql($this->vectorOrder) . ' ' . $this->vectorOrder['direction'];
+            $orderBy = $orderBy ? $vectorOrder . ', ' . $orderBy : $vectorOrder;
+        }
+
+        if ($orderBy) {
+            $sql .= " ORDER BY {$orderBy}";
         }
 
         // Limit / Offset
-        if ($this->limitVal !== null) {
+        if ($applyLimitOffset && $this->limitVal !== null) {
             $sql .= " LIMIT {$this->limitVal}";
         }
-        if ($this->offsetVal !== null) {
+        if ($applyLimitOffset && $this->offsetVal !== null) {
             $sql .= " OFFSET {$this->offsetVal}";
         }
 
@@ -1676,6 +1760,304 @@ class QueryBuilder
         return $flattened;
     }
 
+    private function executeVectorPostProcessedRows(bool $applySlice = true): array
+    {
+        $temporaryColumns = $this->vectorTemporaryColumns();
+        [$sql, $bindings] = $this->buildSelect(
+            applyVectorSql: false,
+            applyLimitOffset: false,
+            extraSelects: array_column($temporaryColumns, 'select')
+        );
+
+        $stmt = $this->db->execute($sql, $bindings);
+        $rows = $stmt->fetchAll();
+
+        $processed = [];
+
+        foreach ($rows as $row) {
+            $searchScore = $this->vectorSearch !== null
+                ? $this->resolveRowVectorScore($row, $this->vectorSearch, $temporaryColumns)
+                : null;
+
+            if (($this->vectorSearch['threshold'] ?? null) !== null && ($searchScore === null || $searchScore < $this->vectorSearch['threshold'])) {
+                continue;
+            }
+
+            if ($this->vectorSelect !== null) {
+                $row->{$this->vectorSelect['alias']} = $this->resolveRowVectorScore($row, $this->vectorSelect, $temporaryColumns);
+            }
+
+            $processed[] = $row;
+        }
+
+        if ($this->vectorOrder !== null) {
+            $direction = $this->vectorOrder['direction'];
+            usort($processed, function (object $left, object $right) use ($temporaryColumns, $direction): int {
+                $leftScore = $this->resolveRowVectorScore($left, $this->vectorOrder, $temporaryColumns) ?? -INF;
+                $rightScore = $this->resolveRowVectorScore($right, $this->vectorOrder, $temporaryColumns) ?? -INF;
+
+                $comparison = $leftScore <=> $rightScore;
+
+                return $direction === 'ASC' ? $comparison : -$comparison;
+            });
+        }
+
+        foreach ($processed as $row) {
+            foreach ($temporaryColumns as $temporary) {
+                unset($row->{$temporary['alias']});
+            }
+        }
+
+        if (!$applySlice) {
+            return $processed;
+        }
+
+        if ($this->offsetVal !== null || $this->limitVal !== null) {
+            $processed = array_slice(
+                $processed,
+                $this->offsetVal ?? 0,
+                $this->limitVal ?? null
+            );
+        }
+
+        return $processed;
+    }
+
+    private function resolveRowVectorScore(object $row, array $query, array $temporaryColumns): ?float
+    {
+        $alias = $temporaryColumns[$query['column']]['alias'] ?? $this->vectorPropertyName($query['column']);
+        $stored = $row->{$alias} ?? null;
+        $candidate = $this->parseVectorValue($stored);
+
+        if ($candidate === null) {
+            return null;
+        }
+
+        return $this->vectorScore($candidate, $query['vector'], $query['metric']);
+    }
+
+    private function vectorTemporaryColumns(): array
+    {
+        $queries = array_filter([$this->vectorSearch, $this->vectorSelect, $this->vectorOrder]);
+        $temporary = [];
+
+        foreach ($queries as $query) {
+            $column = $query['column'];
+            if (isset($temporary[$column])) {
+                continue;
+            }
+
+            $alias = '__spark_vector_' . count($temporary);
+            $temporary[$column] = [
+                'alias' => $alias,
+                'select' => $this->wrapIdentifier($column) . ' AS ' . $this->wrapIdentifier($alias),
+            ];
+        }
+
+        return $temporary;
+    }
+
+    private function shouldUseSqlVectorSearch(): bool
+    {
+        return $this->db->driver() === 'pgsql'
+            && ($this->vectorSearch !== null || $this->vectorSelect !== null || $this->vectorOrder !== null);
+    }
+
+    private function needsVectorPostProcessing(): bool
+    {
+        return !$this->shouldUseSqlVectorSearch()
+            && ($this->vectorSearch !== null || $this->vectorSelect !== null || $this->vectorOrder !== null);
+    }
+
+    private function appendVectorWhereClause(string $whereSql, array $query): string
+    {
+        if (($query['threshold'] ?? null) === null) {
+            return $whereSql;
+        }
+
+        $clause = $this->vectorScoreSql($query) . ' >= ' . $this->formatVectorFloat((float) $query['threshold']);
+
+        if ($whereSql === '') {
+            return ' WHERE ' . $clause;
+        }
+
+        return $whereSql . ' AND ' . $clause;
+    }
+
+    private function vectorScoreSql(array $query): string
+    {
+        $column = $this->wrapIdentifier($query['column']);
+        $vector = $this->vectorSqlLiteral($query['vector']);
+
+        return match ($query['metric']) {
+            'cosine' => '(1 - (' . $column . ' <=> ' . $vector . '))',
+            'l2' => '(1 / (1 + (' . $column . ' <-> ' . $vector . ')))',
+            'inner_product' => '(-(' . $column . ' <#> ' . $vector . '))',
+            default => throw new RuntimeException('Unsupported vector metric [' . $query['metric'] . '].'),
+        };
+    }
+
+    private function buildVectorQuery(string $column, string|array $input, string $metric): array
+    {
+        return [
+            'column' => $column,
+            'vector' => $this->normalizeVectorInput($input),
+            'metric' => $this->normalizeVectorMetric($metric),
+        ];
+    }
+
+    private function normalizeVectorInput(string|array $input): array
+    {
+        if (is_string($input)) {
+            $vector = ai()->embeddings($input)->generate()->first();
+
+            return array_map(static fn(mixed $value): float => (float) $value, $vector);
+        }
+
+        if ($input === []) {
+            throw new RuntimeException('Vector queries require at least one dimension.');
+        }
+
+        foreach ($input as $value) {
+            if (!is_numeric($value)) {
+                throw new RuntimeException('Vector arrays must contain only numeric dimensions.');
+            }
+        }
+
+        return array_map(static fn(mixed $value): float => (float) $value, array_values($input));
+    }
+
+    private function normalizeVectorMetric(string $metric): string
+    {
+        $normalized = strtolower(trim($metric));
+
+        return match ($normalized) {
+            'cosine', 'cos' => 'cosine',
+            'l2', 'euclidean' => 'l2',
+            'inner_product', 'inner-product', 'dot' => 'inner_product',
+            default => throw new RuntimeException('Unsupported vector metric [' . $metric . '].'),
+        };
+    }
+
+    private function parseVectorValue(mixed $value): ?array
+    {
+        if (is_array($value)) {
+            return array_map(static fn(mixed $dimension): float => (float) $dimension, array_values($value));
+        }
+
+        if (!is_string($value) || trim($value) === '') {
+            return null;
+        }
+
+        $trimmed = trim($value);
+        $decoded = json_decode($trimmed, true);
+
+        if (is_array($decoded)) {
+            return array_map(static fn(mixed $dimension): float => (float) $dimension, array_values($decoded));
+        }
+
+        if (str_starts_with($trimmed, '[') && str_ends_with($trimmed, ']')) {
+            $trimmed = trim($trimmed, '[]');
+        }
+
+        $parts = array_filter(array_map('trim', explode(',', $trimmed)), static fn(string $part): bool => $part !== '');
+        if ($parts === []) {
+            return null;
+        }
+
+        return array_map(static fn(string $dimension): float => (float) $dimension, $parts);
+    }
+
+    private function vectorScore(array $candidate, array $query, string $metric): float
+    {
+        $length = min(count($candidate), count($query));
+
+        if ($length === 0) {
+            return 0.0;
+        }
+
+        $candidate = array_slice($candidate, 0, $length);
+        $query = array_slice($query, 0, $length);
+
+        return match ($metric) {
+            'cosine' => $this->cosineSimilarity($candidate, $query),
+            'l2' => 1 / (1 + $this->euclideanDistance($candidate, $query)),
+            'inner_product' => $this->innerProduct($candidate, $query),
+            default => 0.0,
+        };
+    }
+
+    private function cosineSimilarity(array $candidate, array $query): float
+    {
+        $dot = $this->innerProduct($candidate, $query);
+        $leftNorm = sqrt($this->innerProduct($candidate, $candidate));
+        $rightNorm = sqrt($this->innerProduct($query, $query));
+
+        if ($leftNorm == 0.0 || $rightNorm == 0.0) {
+            return 0.0;
+        }
+
+        return $dot / ($leftNorm * $rightNorm);
+    }
+
+    private function euclideanDistance(array $candidate, array $query): float
+    {
+        $sum = 0.0;
+
+        foreach ($candidate as $index => $value) {
+            $delta = $value - $query[$index];
+            $sum += $delta * $delta;
+        }
+
+        return sqrt($sum);
+    }
+
+    private function innerProduct(array $candidate, array $query): float
+    {
+        $sum = 0.0;
+
+        foreach ($candidate as $index => $value) {
+            $sum += $value * $query[$index];
+        }
+
+        return $sum;
+    }
+
+    private function vectorSqlLiteral(array $vector): string
+    {
+        $serialized = implode(', ', array_map(fn(float $value): string => $this->formatVectorFloat($value), $vector));
+
+        return "'[" . $serialized . "]'::vector";
+    }
+
+    private function formatVectorFloat(float $value): string
+    {
+        $formatted = rtrim(rtrim(number_format($value, 12, '.', ''), '0'), '.');
+
+        return $formatted === '' ? '0' : $formatted;
+    }
+
+    private function vectorPropertyName(string $column): string
+    {
+        $segments = explode('.', $column);
+
+        return end($segments) ?: $column;
+    }
+
+    private function wrapTable(string $table): string
+    {
+        if (str_contains($table, ' ') || str_contains($table, '(')) {
+            return $table;
+        }
+
+        return $this->wrapIdentifier($table);
+    }
+
+    private function identifierQuote(): string
+    {
+        return $this->db->driver() === 'pgsql' ? '"' : '`';
+    }
+
     private function wrapIdentifier(string $column): string
     {
         if ($column === '*' || str_contains($column, '(') || str_contains($column, ' ')) {
@@ -1683,9 +2065,10 @@ class QueryBuilder
         }
 
         $segments = explode('.', $column);
+        $quote = $this->identifierQuote();
 
         return implode('.', array_map(
-            static fn(string $segment): string => $segment === '*' ? '*' : '`' . $segment . '`',
+            fn(string $segment) => $segment === '*' ? '*' : $quote . $segment . $quote,
             $segments
         ));
     }

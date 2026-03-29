@@ -8,6 +8,7 @@
   - `pdo_sqlite` para SQLite
   - `pdo_mysql` para MySQL
   - `pdo_pgsql` para PostgreSQL
+- Opcional para semantic search em PostgreSQL: extensao `pgvector`
 - Composer (para dependencias de desenvolvimento)
 
 ## Baseline suportada

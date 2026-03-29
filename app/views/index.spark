@@ -627,14 +627,13 @@
             </article>
             </a>
 
-            <a href="{{ route('docs.show', ['slug' => '17-ai-conventions']) }}" class="feature-card-link">
+            <a href="{{ route('docs.show', ['slug' => '18-search']) }}" class="feature-card-link">
             <article class="feature-card">
                 <div class="feature-card__icon">🤖</div>
                 <h3>AI Unificada</h3>
                 <p>
-                    Uma unica entrada com <code>ai()</code> para texto, embeddings, imagem, audio
-                    e agentes, agora com <code>app/ai/*</code>, prompts nomeados e structured
-                    output sem perder a DX curta do framework.
+                    Uma unica entrada com <code>ai()</code> para texto, embeddings, imagem, audio,
+                    agentes e retrieval, ligada ao banco com vector search e RAG curto.
                 </p>
             </article>
             </a>
@@ -712,11 +711,11 @@
             </article>
             </a>
 
-            <a href="{{ route('docs.show', ['slug' => '17-ai-conventions']) }}" class="capability-card-link">
+            <a href="{{ route('docs.show', ['slug' => '18-search']) }}" class="capability-card-link">
             <article class="capability-card">
                 <strong>AI sem fragmentação</strong>
-                <p>Use <code>ai()</code> com agentes, tools e prompts file-based em <code>app/ai/*</code>, incluindo structured output com <code>schema()</code>.</p>
-                <code>ai()->agent('support')->run()</code>
+                <p>Use <code>ai()</code> com retrieval, vector search no banco e contexto pronto para RAG, sem sair da linguagem do framework.</p>
+                <code>ai()->retrieve('...')->from('documents')</code>
             </article>
             </a>
         </div>

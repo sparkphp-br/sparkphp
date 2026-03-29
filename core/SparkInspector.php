@@ -102,6 +102,11 @@ class SparkInspector
         static::$instance?->addQueue($payload);
     }
 
+    public static function recordAi(array $payload): void
+    {
+        static::$instance?->addAi($payload);
+    }
+
     public static function inspect(mixed ...$values): void
     {
         static::$instance?->addDump('inspect', $values);
@@ -209,6 +214,7 @@ class SparkInspector
             'events' => [],
             'mail' => [],
             'queue' => [],
+            'ai' => [],
             'dumps' => [],
             'exceptions' => [],
             'pipelines' => [],
@@ -231,6 +237,19 @@ class SparkInspector
                 'queue_released' => 0,
                 'queue_failed' => 0,
                 'queue_retries' => 0,
+                'ai_ops' => 0,
+                'ai_text_ops' => 0,
+                'ai_embedding_ops' => 0,
+                'ai_image_ops' => 0,
+                'ai_audio_ops' => 0,
+                'ai_agent_ops' => 0,
+                'ai_retrieval_ops' => 0,
+                'ai_tool_calls' => 0,
+                'ai_ms' => 0.0,
+                'ai_tokens_in' => 0,
+                'ai_tokens_out' => 0,
+                'ai_tokens_total' => 0,
+                'ai_cost_usd' => 0.0,
                 'memory_start_kb' => memory_get_usage(true) / 1024,
                 'memory_end_kb' => 0.0,
                 'memory_peak_kb' => 0.0,

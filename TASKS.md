@@ -181,7 +181,7 @@ Sempre analise os seguintes documentos (vão criar uma orientação melhor do pr
   - Descoberta automática de agentes e ferramentas por convenção
   - Integrar tool-calling e structured output com a mesma filosofia do framework
 
-- [ ] Task 7.3 — AI + Search + Data (inclui Vector Search nativo)
+- [x] Task 7.3 — AI + Search + Data (inclui Vector Search nativo)
   - Criar suporte first-party para embeddings e consulta por similaridade (PostgreSQL + `pgvector` como alvo inicial)
   - Conectar vector search e retrieval ao Query Builder e ao fluxo de AI
   - Facilitar RAG sem transformar o Spark em uma colagem de pacotes

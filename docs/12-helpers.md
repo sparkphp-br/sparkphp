@@ -15,7 +15,7 @@ O SparkPHP fornece dezenas de funcoes globais para que voce nao precise importar
 | `storage_path('x')` | Caminho absoluto para `storage/x`               |
 | `public_path('x')`  | Caminho absoluto para `public/x`                |
 | `spark_version()`   | Versao atual do framework lida de `VERSION`     |
-| `spark_release_line()` | Linha de release atual (`0.4.x`, `1.2.x`)   |
+| `spark_release_line()` | Linha de release atual (`0.5.x`, `1.2.x`)   |
 | `url('/path')`      | URL completa: `APP_URL` + `/path`               |
 
 ## AI
@@ -59,6 +59,17 @@ $result = ai()->text('Extraia nome e email')
     ->generate();
 
 $payload = $result->structured;
+```
+
+Retrieval curto:
+
+```php
+$documents = ai()->retrieve('Como configuro cache?')
+    ->from('documents', 'embedding')
+    ->take(3)
+    ->get();
+
+$context = $documents->toPromptContext('content');
 ```
 
 ## Request & Input

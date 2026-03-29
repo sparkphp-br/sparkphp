@@ -13,6 +13,7 @@ final class QueryBuilderTest extends TestCase
         // Use in-memory SQLite for testing
         $_ENV['DB']      = 'sqlite';
         $_ENV['DB_NAME'] = ':memory:';
+        $_ENV['AI_DRIVER'] = 'fake';
 
         // Reset singleton for each test
         Database::reset();
@@ -43,6 +44,15 @@ final class QueryBuilderTest extends TestCase
             )
         ');
 
+        $this->db->pdo()->exec('
+            CREATE TABLE documents (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title VARCHAR(255) NOT NULL,
+                content TEXT,
+                embedding TEXT
+            )
+        ');
+
         // Seed test data
         $this->db->pdo()->exec("INSERT INTO users (name, email, role, age, active, created_at, updated_at) VALUES ('João', 'j@mail.com', 'admin', 30, 1, '2026-03-10 09:00:00', '2026-03-10 09:00:00')");
         $this->db->pdo()->exec("INSERT INTO users (name, email, role, age, active, created_at, updated_at) VALUES ('Maria', 'm@mail.com', 'editor', 25, 1, '2026-03-15 11:30:00', '2026-03-15 11:30:00')");
@@ -53,6 +63,23 @@ final class QueryBuilderTest extends TestCase
         $this->db->pdo()->exec("INSERT INTO orders (user_id, total, status, created_at) VALUES (1, 200.00, 'completed', '2026-03-18 12:00:00')");
         $this->db->pdo()->exec("INSERT INTO orders (user_id, total, status, created_at) VALUES (2, 50.00, 'pending', '2026-03-20 15:00:00')");
         $this->db->pdo()->exec("INSERT INTO orders (user_id, total, status, created_at) VALUES (3, 75.25, 'cancelled', '2026-04-01 09:30:00')");
+
+        $documents = [
+            ['title' => 'SparkPHP cache guide', 'content' => 'Caching strategies for SparkPHP.'],
+            ['title' => 'Laravel queue notes', 'content' => 'Queue workers and retries.'],
+            ['title' => 'SparkPHP vector search', 'content' => 'Vector queries in SparkPHP.'],
+        ];
+
+        foreach ($documents as $document) {
+            $embedding = ai()->embeddings($document['title'])->generate()->first();
+
+            $stmt = $this->db->pdo()->prepare('INSERT INTO documents (title, content, embedding) VALUES (?, ?, ?)');
+            $stmt->execute([
+                $document['title'],
+                $document['content'],
+                json_encode($embedding, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            ]);
+        }
     }
 
     // ─── orWhere ─────────────────────────────────────
@@ -138,6 +165,61 @@ final class QueryBuilderTest extends TestCase
 
         $this->assertCount(1, $results);
         $this->assertSame('Maria', $results[0]->name);
+    }
+
+    public function testVectorSimilarityRanksNearestDocumentsOnSqliteFallback(): void
+    {
+        $results = db('documents')
+            ->select('id', 'title', 'content')
+            ->selectVectorSimilarity('embedding', 'SparkPHP vector search')
+            ->whereVectorSimilarTo('embedding', 'SparkPHP vector search')
+            ->limit(2)
+            ->get();
+
+        $this->assertCount(2, $results);
+        $this->assertSame('SparkPHP vector search', $results[0]->title);
+        $this->assertGreaterThanOrEqual($results[1]->vector_score, $results[0]->vector_score);
+        $this->assertFalse(property_exists($results[0], 'embedding'));
+    }
+
+    public function testVectorSimilarityThresholdFiltersLowRelevanceRows(): void
+    {
+        $results = db('documents')
+            ->select('id', 'title')
+            ->whereVectorSimilarTo('embedding', 'SparkPHP vector search', 0.9999)
+            ->get();
+
+        $this->assertCount(1, $results);
+        $this->assertSame('SparkPHP vector search', $results[0]->title);
+    }
+
+    public function testPgsqlVectorSimilarityBuildsPgvectorFriendlySql(): void
+    {
+        $originalDriver = $_ENV['DB'] ?? null;
+        $originalName = $_ENV['DB_NAME'] ?? null;
+
+        $_ENV['DB'] = 'pgsql';
+        $_ENV['DB_NAME'] = 'sparkphp';
+        Database::reset();
+
+        try {
+            [$sql] = db('documents')
+                ->select('id', 'title')
+                ->selectVectorSimilarity('embedding', [0.1, 0.2, 0.3])
+                ->whereVectorSimilarTo('embedding', [0.1, 0.2, 0.3], 0.8)
+                ->orderByVectorSimilarity('embedding', [0.1, 0.2, 0.3])
+                ->limit(5)
+                ->toRawSql();
+
+            $this->assertStringContainsString('SELECT id, title, (1 - ("embedding" <=> \'[0.1, 0.2, 0.3]\'::vector)) AS "vector_score" FROM "documents"', $sql);
+            $this->assertStringContainsString('WHERE (1 - ("embedding" <=> \'[0.1, 0.2, 0.3]\'::vector)) >= 0.8', $sql);
+            $this->assertStringContainsString('ORDER BY (1 - ("embedding" <=> \'[0.1, 0.2, 0.3]\'::vector)) DESC', $sql);
+        } finally {
+            $_ENV['DB'] = $originalDriver;
+            $_ENV['DB_NAME'] = $originalName;
+            Database::reset();
+            $this->db = Database::getInstance();
+        }
     }
 
     // ─── when (conditional) ──────────────────────────

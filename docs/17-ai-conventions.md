@@ -203,3 +203,6 @@ manuais.
 - `app/ai/agents` define defaults de agentes
 - `schema([...])` padroniza structured output
 - o driver `fake` continua suficiente para desenvolvimento e testes
+
+Para a camada de busca vetorial e retrieval em cima dessas convencoes, veja
+[18-search.md](18-search.md).

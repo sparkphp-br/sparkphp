@@ -38,6 +38,7 @@ Algumas frentes agora sao tratadas como contratos publicos do produto:
 - observabilidade profunda do `SparkInspector` (pipelines, gargalos, queue/cache/request)
 - surfaces publicas de versao (`VERSION`, CLI e relatorios gerados)
 - AI file-based (`app/ai/*`), prompts nomeados, structured output e helpers publicos
+- vector search, retrieval e contratos de ranking do `QueryBuilder` / `ai()`
 
 ## Meta mínima de cobertura
 
