@@ -1,5 +1,101 @@
 <?php
 
+// ─────────────────────────────────────────────────────
+// Model Attributes (PHP 8+)
+// ─────────────────────────────────────────────────────
+
+/**
+ * Declare a reusable query scope via class attribute.
+ *
+ * ```php
+ * #[Scope('published', column: 'published', value: true)]
+ * #[Scope('adults', column: 'age', op: '>=', value: 18)]
+ * #[Scope('byAuthor', column: 'user_id')]
+ * #[Scope('verified', whereNotNull: 'email_verified_at')]
+ * class Post extends Model {}
+ *
+ * Post::published()->byAuthor(1)->get();
+ * ```
+ */
+#[\Attribute(\Attribute::TARGET_CLASS | \Attribute::IS_REPEATABLE)]
+class Scope
+{
+    public function __construct(
+        public string $name,
+        public ?string $column = null,
+        public string $op = '=',
+        public mixed $value = null,
+        public ?string $whereNull = null,
+        public ?string $whereNotNull = null,
+    ) {}
+
+    public function apply(QueryBuilder $query, array $args): QueryBuilder
+    {
+        if ($this->whereNull !== null) {
+            return $query->whereNull($this->whereNull);
+        }
+        if ($this->whereNotNull !== null) {
+            return $query->whereNotNull($this->whereNotNull);
+        }
+        if ($this->column !== null) {
+            $value = $this->value ?? ($args[0] ?? null);
+            if ($this->op === '=') {
+                return $query->where($this->column, $value);
+            }
+            return $query->where($this->column, $this->op, $value);
+        }
+        return $query;
+    }
+}
+
+/**
+ * Mark a method as an accessor (computed property).
+ * Method name is auto-converted to snake_case property name.
+ *
+ * ```php
+ * class User extends Model {
+ *     #[Accessor]
+ *     public function fullName(): string {
+ *         return $this->name . ' ' . $this->surname;
+ *     }
+ * }
+ * // $user->full_name
+ * ```
+ */
+#[\Attribute(\Attribute::TARGET_METHOD)]
+class Accessor
+{
+    public function __construct(
+        public ?string $name = null,
+    ) {}
+}
+
+/**
+ * Mark a method as a mutator (transform on write).
+ * Method name is auto-converted to snake_case property name.
+ *
+ * ```php
+ * class User extends Model {
+ *     #[Mutator]
+ *     public function password(string $value): string {
+ *         return password_hash($value, PASSWORD_DEFAULT);
+ *     }
+ * }
+ * // $user->password = 'plain' → stores hashed
+ * ```
+ */
+#[\Attribute(\Attribute::TARGET_METHOD)]
+class Mutator
+{
+    public function __construct(
+        public ?string $name = null,
+    ) {}
+}
+
+// ─────────────────────────────────────────────────────
+// Model
+// ─────────────────────────────────────────────────────
+
 /**
  * SparkPHP Model — Base class for database models.
  *
@@ -9,10 +105,10 @@
  * - Automatic timestamps (created_at, updated_at)
  * - Attribute casting (int, float, bool, array/json, string, datetime)
  * - Soft deletes (opt-in via $softDeletes = true)
- * - Query scopes (define scopeActive(), call User::active())
- * - Accessors & Mutators (getFullNameAttribute / setPasswordAttribute)
+ * - Query scopes: #[Scope] attributes or scopeXxx() methods
+ * - Accessors & Mutators: #[Accessor] / #[Mutator] or getXxxAttribute / setXxxAttribute
  * - Hidden attributes for serialization ($hidden)
- * - Relationships: belongsTo, hasMany, hasOne, belongsToMany
+ * - Relationships: #[HasMany] / #[HasOne] / #[BelongsTo] / #[BelongsToMany] or methods
  * - Eager loading via with()
  * - Lifecycle events via EventEmitter
  */
@@ -61,6 +157,152 @@ abstract class Model
 
     /** Cached eager-loaded relations: relation name => result. */
     private array $relations     = [];
+
+    /** Static cache of attribute-defined relations per class. */
+    private static array $attributeRelationsCache = [];
+
+    /** Static cache of attribute-defined scopes per class. */
+    private static array $attributeScopesCache = [];
+
+    /** Static cache of attribute-defined accessors per class: property name => method name. */
+    private static array $attributeAccessorsCache = [];
+
+    /** Static cache of attribute-defined mutators per class: property name => method name. */
+    private static array $attributeMutatorsCache = [];
+
+    // ─────────────────────────────────────────────
+    // Attribute scanning (PHP 8+)
+    // ─────────────────────────────────────────────
+
+    /**
+     * Convert camelCase method name to snake_case property name.
+     */
+    private static function methodToSnake(string $method): string
+    {
+        return strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0', $method));
+    }
+
+    /**
+     * Scan class-level #[Scope] attributes.
+     *
+     * @return array<string, Scope>
+     */
+    private static function resolveAttributeScopes(): array
+    {
+        $class = static::class;
+
+        if (isset(self::$attributeScopesCache[$class])) {
+            return self::$attributeScopesCache[$class];
+        }
+
+        $scopes = [];
+        $ref = new \ReflectionClass($class);
+
+        foreach ($ref->getAttributes(Scope::class) as $attr) {
+            $instance = $attr->newInstance();
+            $scopes[$instance->name] = $instance;
+        }
+
+        self::$attributeScopesCache[$class] = $scopes;
+        return $scopes;
+    }
+
+    /**
+     * Scan method-level #[Accessor] attributes.
+     *
+     * @return array<string, string>  property name => method name
+     */
+    private static function resolveAttributeAccessors(): array
+    {
+        $class = static::class;
+
+        if (isset(self::$attributeAccessorsCache[$class])) {
+            return self::$attributeAccessorsCache[$class];
+        }
+
+        $accessors = [];
+        $ref = new \ReflectionClass($class);
+
+        foreach ($ref->getMethods() as $method) {
+            $attrs = $method->getAttributes(Accessor::class);
+            if (!empty($attrs)) {
+                $instance = $attrs[0]->newInstance();
+                $name = $instance->name ?? self::methodToSnake($method->getName());
+                $accessors[$name] = $method->getName();
+            }
+        }
+
+        self::$attributeAccessorsCache[$class] = $accessors;
+        return $accessors;
+    }
+
+    /**
+     * Scan method-level #[Mutator] attributes.
+     *
+     * @return array<string, string>  property name => method name
+     */
+    private static function resolveAttributeMutators(): array
+    {
+        $class = static::class;
+
+        if (isset(self::$attributeMutatorsCache[$class])) {
+            return self::$attributeMutatorsCache[$class];
+        }
+
+        $mutators = [];
+        $ref = new \ReflectionClass($class);
+
+        foreach ($ref->getMethods() as $method) {
+            $attrs = $method->getAttributes(Mutator::class);
+            if (!empty($attrs)) {
+                $instance = $attrs[0]->newInstance();
+                $name = $instance->name ?? self::methodToSnake($method->getName());
+                $mutators[$name] = $method->getName();
+            }
+        }
+
+        self::$attributeMutatorsCache[$class] = $mutators;
+        return $mutators;
+    }
+
+    /**
+     * Scan class-level PHP Attributes for relationship declarations.
+     *
+     * @return array<string, RelationAttribute>
+     */
+    private static function resolveAttributeRelations(): array
+    {
+        $class = static::class;
+
+        if (isset(self::$attributeRelationsCache[$class])) {
+            return self::$attributeRelationsCache[$class];
+        }
+
+        $relations = [];
+        $ref = new \ReflectionClass($class);
+
+        foreach ($ref->getAttributes() as $attr) {
+            if (is_subclass_of($attr->getName(), RelationAttribute::class)) {
+                $instance = $attr->newInstance();
+                $relations[$instance->name] = $instance;
+            }
+        }
+
+        self::$attributeRelationsCache[$class] = $relations;
+        return $relations;
+    }
+
+    /**
+     * Build a Relation object from an attribute declaration.
+     */
+    private function buildAttributeRelation(string $name): ?Relation
+    {
+        $attrs = static::resolveAttributeRelations();
+        if (!isset($attrs[$name])) {
+            return null;
+        }
+        return $attrs[$name]->buildRelation($this);
+    }
 
     // ─────────────────────────────────────────────
     // Table name resolution
@@ -191,9 +433,9 @@ abstract class Model
 
         $record = db(static::resolveTable())->create($model->getAttributes());
 
-        // Copy back generated id + attributes
+        // Copy back generated id + attributes (raw, skip mutators — values are already mutated)
         foreach ((array) $record as $k => $v) {
-            $model->setAttribute($k, $v);
+            $model->attributes[$k] = $v;
         }
         $model->exists   = true;
         $model->original = $model->attributes;
@@ -513,7 +755,15 @@ abstract class Model
      */
     public function setAttribute(string $key, mixed $value): void
     {
-        // Check for a mutator: setNameAttribute($value)
+        // Check for #[Mutator] attribute (skip when value is null)
+        $mutators = static::resolveAttributeMutators();
+        if (isset($mutators[$key]) && $value !== null) {
+            $value = $this->{$mutators[$key]}($value);
+            $this->attributes[$key] = $this->castValue($key, $value);
+            return;
+        }
+
+        // Check for classic mutator: setNameAttribute($value)
         $mutator = 'set' . str_replace('_', '', ucwords($key, '_')) . 'Attribute';
         if (method_exists($this, $mutator)) {
             $value = $this->$mutator($value);
@@ -527,7 +777,13 @@ abstract class Model
      */
     public function getAttribute(string $key): mixed
     {
-        // Check for an accessor: getNameAttribute()
+        // Check for #[Accessor] attribute
+        $accessors = static::resolveAttributeAccessors();
+        if (isset($accessors[$key])) {
+            return $this->{$accessors[$key]}();
+        }
+
+        // Check for classic accessor: getNameAttribute()
         $accessor = 'get' . str_replace('_', '', ucwords($key, '_')) . 'Attribute';
         if (method_exists($this, $accessor)) {
             return $this->$accessor();
@@ -602,7 +858,12 @@ abstract class Model
     {
         $data = $this->attributes;
 
-        // Apply accessors
+        // Apply #[Accessor] attributes
+        foreach (static::resolveAttributeAccessors() as $propName => $methodName) {
+            $data[$propName] = $this->$methodName();
+        }
+
+        // Apply classic accessors: getXxxAttribute()
         foreach ($this->attributes as $key => $value) {
             $accessor = 'get' . str_replace('_', '', ucwords($key, '_')) . 'Attribute';
             if (method_exists($this, $accessor)) {
@@ -697,7 +958,13 @@ abstract class Model
 
     public function __get(string $name): mixed
     {
-        // Check for accessor
+        // Check for #[Accessor] attribute
+        $accessors = static::resolveAttributeAccessors();
+        if (isset($accessors[$name])) {
+            return $this->{$accessors[$name]}();
+        }
+
+        // Check for classic accessor: getNameAttribute()
         $accessor = 'get' . str_replace('_', '', ucwords($name, '_')) . 'Attribute';
         if (method_exists($this, $accessor)) {
             return $this->$accessor();
@@ -716,8 +983,23 @@ abstract class Model
         // Check relationship method (lazy load)
         if (method_exists($this, $name)) {
             $result = $this->$name();
+
+            if ($result instanceof Relation) {
+                $resolved = $result->getResults();
+                $this->relations[$name] = $resolved;
+                return $resolved;
+            }
+
             $this->relations[$name] = $result;
             return $result;
+        }
+
+        // Check class-level attribute relation (#[HasMany] on class)
+        $relation = $this->buildAttributeRelation($name);
+        if ($relation !== null) {
+            $resolved = $relation->getResults();
+            $this->relations[$name] = $resolved;
+            return $resolved;
         }
 
         return null;
@@ -732,7 +1014,24 @@ abstract class Model
     {
         return isset($this->attributes[$name])
             || isset($this->relations[$name])
-            || method_exists($this, 'get' . str_replace('_', '', ucwords($name, '_')) . 'Attribute');
+            || method_exists($this, 'get' . str_replace('_', '', ucwords($name, '_')) . 'Attribute')
+            || isset(static::resolveAttributeAccessors()[$name])
+            || isset(static::resolveAttributeRelations()[$name]);
+    }
+
+    /**
+     * Handle instance calls to attribute-defined relations.
+     * Allows $user->posts() to return a Relation for chaining.
+     */
+    public function __call(string $method, array $args): mixed
+    {
+        // Check class-level attribute relation
+        $relation = $this->buildAttributeRelation($method);
+        if ($relation !== null) {
+            return $relation;
+        }
+
+        throw new \BadMethodCallException("Method {$method}() does not exist on " . static::class);
     }
 
     // ─────────────────────────────────────────────
@@ -758,11 +1057,19 @@ abstract class Model
     public static function __callStatic(string $method, array $args): mixed
     {
         $instance = new static();
-        $scopeMethod = 'scope' . ucfirst($method);
 
+        // Check classic scope method: scopeXxx()
+        $scopeMethod = 'scope' . ucfirst($method);
         if (method_exists($instance, $scopeMethod)) {
             $query = static::query();
             return $instance->$scopeMethod($query, ...$args) ?? $query;
+        }
+
+        // Check #[Scope] attribute
+        $scopes = static::resolveAttributeScopes();
+        if (isset($scopes[$method])) {
+            $query = static::query();
+            return $scopes[$method]->apply($query, $args);
         }
 
         throw new \BadMethodCallException("Method {$method}() does not exist on " . static::class);
@@ -785,10 +1092,12 @@ abstract class Model
      * }
      * ```
      */
-    protected function belongsTo(string $related, ?string $foreignKey = null, string $ownerKey = 'id'): mixed
+    protected function belongsTo(string $related, ?string $foreignKey = null, string $ownerKey = 'id'): BelongsToRelation
     {
-        $fk = $foreignKey ?? $this->guessFK($related);
-        return (new $related())->query()->where($ownerKey, $this->getAttribute($fk))->first();
+        $fk    = $foreignKey ?? $this->guessFK($related);
+        $query = (new $related())::query();
+
+        return new BelongsToRelation($query, $this, $related, $fk, $ownerKey);
     }
 
     /**
@@ -800,10 +1109,12 @@ abstract class Model
      * }
      * ```
      */
-    protected function hasMany(string $related, ?string $foreignKey = null, string $localKey = 'id'): array
+    protected function hasMany(string $related, ?string $foreignKey = null, string $localKey = 'id'): HasManyRelation
     {
-        $fk = $foreignKey ?? $this->guessFKReverse();
-        return (new $related())->query()->where($fk, $this->getAttribute($localKey))->get();
+        $fk    = $foreignKey ?? $this->guessFKReverse();
+        $query = (new $related())::query();
+
+        return new HasManyRelation($query, $this, $related, $fk, $localKey);
     }
 
     /**
@@ -815,10 +1126,12 @@ abstract class Model
      * }
      * ```
      */
-    protected function hasOne(string $related, ?string $foreignKey = null, string $localKey = 'id'): mixed
+    protected function hasOne(string $related, ?string $foreignKey = null, string $localKey = 'id'): HasOneRelation
     {
-        $fk = $foreignKey ?? $this->guessFKReverse();
-        return (new $related())->query()->where($fk, $this->getAttribute($localKey))->first();
+        $fk    = $foreignKey ?? $this->guessFKReverse();
+        $query = (new $related())::query();
+
+        return new HasOneRelation($query, $this, $related, $fk, $localKey);
     }
 
     /**
@@ -831,32 +1144,25 @@ abstract class Model
      * // Pivot table is auto-resolved: roles_users (alphabetical)
      * ```
      */
-    protected function belongsToMany(string $related, ?string $pivot = null, ?string $fk = null, ?string $rfk = null): array
+    protected function belongsToMany(string $related, ?string $pivot = null, ?string $fk = null, ?string $rfk = null): BelongsToManyRelation
     {
         $thisTable    = static::resolveTable();
         $relatedTable = (new $related())->getTable();
 
         // Pivot table: alphabetical order
-        $tables    = [$thisTable, $relatedTable];
+        $tables = [$thisTable, $relatedTable];
         sort($tables);
-        $pivot = $pivot ?? implode('_', $tables);
+        $pivotTable = $pivot ?? implode('_', $tables);
 
         $thisFk    = $fk  ?? rtrim($thisTable, 's') . '_id';
         $relatedFk = $rfk ?? rtrim($relatedTable, 's') . '_id';
 
-        $primaryKey = $this->getAttribute($this->primaryKey);
+        $query = (new $related())::query();
 
-        $rows = db($pivot)->where($thisFk, $primaryKey)->get();
-        $ids  = array_column((array) $rows, $relatedFk);
-
-        if (empty($ids)) {
-            return [];
-        }
-
-        return (new $related())->query()->whereIn('id', $ids)->get();
+        return new BelongsToManyRelation($query, $this, $related, $pivotTable, $thisFk, $relatedFk, $this->primaryKey);
     }
 
-    private function guessFK(string $relatedClass): string
+    public function guessFK(string $relatedClass): string
     {
         $short = strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0',
             (new \ReflectionClass($relatedClass))->getShortName()
@@ -864,12 +1170,17 @@ abstract class Model
         return $short . '_id';
     }
 
-    private function guessFKReverse(): string
+    public function guessFKReverse(): string
     {
         $short = strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0',
             (new \ReflectionClass($this))->getShortName()
         ));
         return $short . '_id';
+    }
+
+    public function getPrimaryKey(): string
+    {
+        return $this->primaryKey;
     }
 
     // ─────────────────────────────────────────────

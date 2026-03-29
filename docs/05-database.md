@@ -433,7 +433,36 @@ $user->trashed();          // true se soft-deleted
 
 ### Scopes
 
-Defina filtros reutilizaveis:
+Defina filtros reutilizaveis com `#[Scope]` direto na classe:
+
+```php
+#[Scope('published', column: 'published', value: true)]
+#[Scope('active', column: 'active', value: true)]
+#[Scope('byAuthor', column: 'user_id')]
+#[Scope('adults', column: 'age', op: '>=', value: 18)]
+#[Scope('verified', whereNotNull: 'email_verified_at')]
+#[Scope('draft', whereNull: 'published_at')]
+class Post extends Model {}
+
+// Uso
+Post::published()->get();
+Post::byAuthor(1)->latest()->get();
+Post::published()->active()->get();
+```
+
+#### Parametros do #[Scope]
+
+| Parametro | Descricao |
+|-----------|-----------|
+| `column` | Coluna para o filtro WHERE |
+| `value` | Valor fixo. Se omitido, o scope aceita um parametro: `Post::byAuthor(1)` |
+| `op` | Operador (padrao `=`). Ex: `>=`, `<`, `!=`, `LIKE` |
+| `whereNull` | Atalho para `WHERE coluna IS NULL` |
+| `whereNotNull` | Atalho para `WHERE coluna IS NOT NULL` |
+
+#### Sintaxe classica (metodos)
+
+A forma anterior via metodos `scopeXxx()` continua funcionando:
 
 ```php
 class Post extends Model
@@ -449,22 +478,61 @@ class Post extends Model
     }
 }
 
-// Uso
-$posts = Post::published()->byAuthor(1)->latest()->get();
+Post::published()->byAuthor(1)->latest()->get();
 ```
 
+> **Quando usar metodos?** Quando o scope precisa de logica complexa (multiplos wheres,
+> subqueries, joins). Para filtros simples, prefira `#[Scope]`.
+
 ### Accessors e Mutators
+
+Defina propriedades computadas e transformacoes de escrita com `#[Accessor]` e `#[Mutator]`:
 
 ```php
 class User extends Model
 {
-    // Accessor: $user->full_name
+    #[Accessor]
+    public function fullName(): string
+    {
+        return $this->name . ' ' . $this->surname;
+    }
+
+    #[Accessor('display_role')]
+    public function computeRole(): string
+    {
+        return 'Role: ' . $this->role;
+    }
+
+    #[Mutator]
+    public function password(string $value): string
+    {
+        return password_hash($value, PASSWORD_DEFAULT);
+    }
+}
+
+$user->full_name;     // "Ana Silva" (Accessor)
+$user->display_role;  // "Role: admin" (Accessor com nome customizado)
+$user->password = 'plain';  // armazena hash (Mutator)
+```
+
+O nome da propriedade e derivado automaticamente do nome do metodo (`fullName` → `full_name`).
+Use o parametro opcional para nomes customizados: `#[Accessor('display_role')]`.
+
+Accessors definidos com `#[Accessor]` tambem sao incluidos em `toArray()` e `toJson()`.
+
+#### Sintaxe classica (metodos)
+
+A convencao `get{Campo}Attribute` / `set{Campo}Attribute` continua funcionando.
+O nome do campo usa PascalCase: `full_name` → `getFullNameAttribute`, `password` → `setPasswordAttribute`:
+
+```php
+class User extends Model
+{
     public function getFullNameAttribute(): string
     {
         return $this->name . ' ' . $this->surname;
     }
 
-    // Mutator: $user->password = 'plain'
     public function setPasswordAttribute(string $value): void
     {
         $this->attributes['password'] = password_hash($value, PASSWORD_DEFAULT);
@@ -472,51 +540,142 @@ class User extends Model
 }
 ```
 
+> **Quando usar metodos?** Quando precisar de compatibilidade com codigo existente.
+> Para novos models, prefira `#[Accessor]` e `#[Mutator]`.
+
 ### Relacionamentos
 
+Defina relacionamentos usando PHP Attributes na classe.
+Os attributes ficam acima da palavra `class`, mas pertencem a ela — e a sintaxe nativa do PHP 8:
+
 ```php
+#[HasMany(Post::class)]           // ← pertence a classe User
+#[HasOne(Profile::class)]         // ← pertence a classe User
+#[BelongsToMany(Role::class, pivot: 'user_roles')]
 class User extends Model
 {
-    public function posts()
-    {
-        return $this->hasMany(Post::class);
-    }
-
-    public function profile()
-    {
-        return $this->hasOne(Profile::class);
-    }
-
-    public function roles()
-    {
-        return $this->belongsToMany(Role::class, 'user_roles');
-    }
-}
-
-class Post extends Model
-{
-    public function author()
-    {
-        return $this->belongsTo(User::class, 'user_id');
-    }
+    protected array $fillable = ['name', 'email'];
 }
 ```
+
+```php
+#[BelongsTo(User::class, as: 'author')]
+class Post extends Model
+{
+    protected array $fillable = ['user_id', 'title', 'body'];
+}
+```
+
+#### Attributes disponiveis
+
+| Attribute | Descricao | Exemplo |
+|-----------|-----------|---------|
+| `#[HasMany]` | Um para muitos | `#[HasMany(Post::class)]` |
+| `#[HasOne]` | Um para um | `#[HasOne(Profile::class)]` |
+| `#[BelongsTo]` | Pertence a (inverso) | `#[BelongsTo(User::class)]` |
+| `#[BelongsToMany]` | Muitos para muitos | `#[BelongsToMany(Role::class)]` |
+
+#### Parametros opcionais
+
+```php
+// Nome customizado (por padrao, deriva do nome da classe)
+#[HasMany(Comment::class, as: 'reviews')]
+
+// Foreign key customizada
+#[BelongsTo(User::class, as: 'author', foreignKey: 'author_id')]
+
+// Tabela pivot customizada
+#[BelongsToMany(Role::class, pivot: 'user_roles', foreignPivotKey: 'user_id', relatedPivotKey: 'role_id')]
+```
+
+> O nome do relacionamento e resolvido automaticamente a partir da classe:
+> `Post::class` → `posts`, `Profile::class` → `profile`, `OrderItem::class` → `order_items`.
+> Use o parametro `as:` para customizar.
 
 #### Usando relacionamentos
 
 ```php
-// Lazy loading
+// Lazy loading (acessa como propriedade — resolve automaticamente)
 $user = User::find(1);
 $posts = $user->posts;         // executa query sob demanda
 $name  = $post->author->name;
 
-// Eager loading (evita N+1)
+// Eager loading (evita N+1 com batch queries)
 $users = User::with('posts')->get();
 $posts = Post::with('author')->where('published', true)->get();
 
 // Multiplos relacionamentos
 $users = User::with('posts', 'profile', 'roles')->get();
 ```
+
+#### Encadeando constraints no relacionamento
+
+Ao chamar como **metodo** (`->posts()`), voce recebe um objeto Relation encadeavel:
+
+```php
+// Filtrar resultados do relacionamento
+$paid = $user->orders()->where('status', 'paid')->get();
+
+// Ordenar e limitar
+$recent = $user->posts()->latest()->limit(5)->get();
+
+// Contar
+$total = $user->orders()->count();
+
+// Paginar
+$page = $user->posts()->paginate(10);
+
+// Atualizar em massa
+$user->orders()->where('status', 'pending')->update(['status' => 'cancelled']);
+
+// Deletar relacionados
+$user->posts()->delete();
+```
+
+> **Dica:** `$user->posts` (propriedade) executa e retorna os resultados.
+> `$user->posts()` (metodo) retorna o Relation, permitindo encadear antes de executar.
+
+#### Sintaxe via metodos
+
+Tambem e possivel definir relacionamentos via metodos — util quando precisar de logica
+customizada ou constraints padroes:
+
+```php
+class User extends Model
+{
+    public function posts(): HasManyRelation
+    {
+        return $this->hasMany(Post::class);
+    }
+
+    // Relacionamento com constraint fixa
+    public function publishedPosts(): HasManyRelation
+    {
+        return $this->hasMany(Post::class)->where('published', true);
+    }
+
+    public function profile(): HasOneRelation
+    {
+        return $this->hasOne(Profile::class);
+    }
+
+    public function roles(): BelongsToManyRelation
+    {
+        return $this->belongsToMany(Role::class, 'user_roles');
+    }
+}
+```
+
+| Metodo | Retorno | Descricao |
+|--------|---------|-----------|
+| `$this->hasMany(Related::class, ?fk, ?localKey)` | `HasManyRelation` | Um para muitos |
+| `$this->hasOne(Related::class, ?fk, ?localKey)` | `HasOneRelation` | Um para um |
+| `$this->belongsTo(Related::class, ?fk, ?ownerKey)` | `BelongsToRelation` | Pertence a |
+| `$this->belongsToMany(Related::class, ?pivot, ?fk, ?rfk)` | `BelongsToManyRelation` | Muitos para muitos |
+
+> **Quando usar metodos?** Quando o relacionamento precisa de constraints fixas,
+> logica condicional, ou parametros que a forma declarativa nao suporta.
+> Para o dia a dia, prefira a forma declarativa com arrays.
 
 ### Eventos do model
 

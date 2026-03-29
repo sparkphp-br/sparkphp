@@ -1249,18 +1249,46 @@ class QueryBuilder
 
     /**
      * Load eager relations onto a collection of hydrated models.
+     * Uses batch queries (single query per relation) to avoid N+1.
      */
     private function loadEagerRelations(array $models): array
     {
         foreach ($this->eagerLoads as $relation => $config) {
-            if (!method_exists($models[0], $relation)) {
+            // Try method call first, then attribute-defined relation
+            $relationInstance = null;
+
+            if (method_exists($models[0], $relation)) {
+                $relationInstance = $models[0]->$relation();
+            } elseif ($models[0] instanceof Model) {
+                // Check attribute-defined relations via __call
+                try {
+                    $relationInstance = $models[0]->$relation();
+                } catch (\BadMethodCallException) {
+                    continue;
+                }
+            } else {
                 continue;
             }
 
-            // Collect parent IDs and call the relation on each model
-            foreach ($models as $model) {
-                if ($model instanceof Model) {
-                    $model->setRelation($relation, $model->$relation());
+            if ($relationInstance instanceof Relation) {
+                // Batch: set constraints for all models at once
+                $relationInstance->addEagerConstraints($models);
+
+                // BelongsToMany handles its own matching internally
+                if ($relationInstance instanceof BelongsToManyRelation) {
+                    $relationInstance->match($models, [], $relation);
+                } else {
+                    // Execute one query for all results
+                    $results = $relationInstance->get();
+                    // Distribute results back to each model
+                    $relationInstance->match($models, $results, $relation);
+                }
+            } else {
+                // Fallback for non-Relation methods (backward compat)
+                foreach ($models as $model) {
+                    if ($model instanceof Model) {
+                        $model->setRelation($relation, $model->$relation());
+                    }
                 }
             }
         }

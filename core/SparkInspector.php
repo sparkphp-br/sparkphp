@@ -793,42 +793,77 @@ HTML;
         $slowMs = (float) ($_ENV['SPARK_INSPECTOR_SLOW_MS'] ?? 250);
 
         foreach ($this->storage->all() as $item) {
-            $statusColor = ((int) $item['status']) >= 500 ? '#dc2626' : (((int) $item['status']) >= 400 ? '#d97706' : '#059669');
+            $status = (int) $item['status'];
+            $statusColor = $status >= 500 ? '#dc2626' : ($status >= 400 ? '#d97706' : '#059669');
+            $statusBg = $status >= 500 ? '#fef2f2' : ($status >= 400 ? '#fffbeb' : '#ecfdf5');
             $slow = (float) $item['duration_ms'] >= $slowMs;
+            $methodBadge = in_array($item['method'], ['POST', 'PUT', 'PATCH', 'DELETE']) ? '#7c3aed' : '#2563eb';
+            $duration = (float) $item['duration_ms'];
+            $durationColor = $slow ? '#dc2626' : ($duration > 100 ? '#d97706' : '#6b7280');
+            $timeAgo = $this->timeAgo($item['created_at']);
+
             $rows[] = sprintf(
-                '<tr style="background:%s;"><td><a href="%s/requests/%s">%s</a></td><td>%s</td><td><span style="color:%s;font-weight:700;">%s</span></td><td>%.1f ms</td><td>%s</td><td>%s</td><td>%s</td></tr>',
-                $slow ? '#fff7ed' : '#ffffff',
+                '<tr class="req-row" onclick="window.location.href=\'%s/requests/%s\'" style="cursor:pointer;">' .
+                '<td><span class="method-badge" style="background:%s;">%s</span></td>' .
+                '<td class="path-cell"><code>%s</code></td>' .
+                '<td><span class="status-badge" style="background:%s;color:%s;">%s</span></td>' .
+                '<td><span style="color:%s;font-weight:600;">%.1f ms</span></td>' .
+                '<td class="dim">%s</td>' .
+                '<td class="dim">%s</td>' .
+                '<td class="dim"><span title="%s">%s</span></td>' .
+                '</tr>',
                 htmlspecialchars($this->prefix),
                 htmlspecialchars($item['id']),
+                $methodBadge,
                 htmlspecialchars($item['method']),
                 htmlspecialchars($item['path']),
+                $statusBg,
                 $statusColor,
                 htmlspecialchars((string) $item['status']),
-                (float) $item['duration_ms'],
+                $durationColor,
+                $duration,
                 number_format((float) $item['memory_peak_kb'], 0) . ' KB',
                 htmlspecialchars((string) $item['query_count']),
-                htmlspecialchars($item['created_at'])
+                htmlspecialchars($item['created_at']),
+                htmlspecialchars($timeAgo)
             );
         }
 
-        $tableRows = $rows === [] ? '<tr><td colspan="7">No requests captured yet.</td></tr>' : implode('', $rows);
+        $count = count($rows);
+        $tableRows = $rows === [] ? '<tr><td colspan="7" style="text-align:center;padding:48px 12px;color:#9ca3af;">No requests captured yet.</td></tr>' : implode('', $rows);
 
         $content = <<<HTML
-<div style="display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px;">
-  <div>
-    <h1 style="margin:0;">Spark Inspector</h1>
-    <p style="margin:6px 0 0;color:#6b7280;">Recent requests captured by the framework.</p>
+<div class="page-header">
+  <div class="header-left">
+    <div class="logo-row">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#2563eb" stroke-width="2"/><path d="M12 6v6l4 2" stroke="#2563eb" stroke-width="2" stroke-linecap="round"/></svg>
+      <h1>Spark Inspector</h1>
+    </div>
+    <p class="subtitle">Captured <strong>{$count}</strong> recent requests</p>
   </div>
   <form method="POST" action="{$this->prefix}/clear">
-    <button type="submit" style="background:#111827;color:#fff;border:0;border-radius:10px;padding:10px 14px;cursor:pointer;">Clear History</button>
+    <button type="submit" class="btn-clear">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+      Clear
+    </button>
   </form>
 </div>
-<table style="width:100%;border-collapse:collapse;background:#fff;border-radius:14px;overflow:hidden;">
-  <thead style="background:#111827;color:#fff;">
-    <tr><th style="text-align:left;padding:12px;">Method</th><th style="text-align:left;padding:12px;">Path</th><th style="text-align:left;padding:12px;">Status</th><th style="text-align:left;padding:12px;">Duration</th><th style="text-align:left;padding:12px;">Memory</th><th style="text-align:left;padding:12px;">Queries</th><th style="text-align:left;padding:12px;">Captured</th></tr>
-  </thead>
-  <tbody>{$tableRows}</tbody>
-</table>
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th style="width:80px;">Method</th>
+        <th>Path</th>
+        <th style="width:80px;">Status</th>
+        <th style="width:100px;">Duration</th>
+        <th style="width:100px;">Memory</th>
+        <th style="width:70px;">Queries</th>
+        <th style="width:110px;">When</th>
+      </tr>
+    </thead>
+    <tbody>{$tableRows}</tbody>
+  </table>
+</div>
 HTML;
 
         return $this->renderShell('Spark Inspector', $content);
@@ -836,6 +871,24 @@ HTML;
 
     private function renderRequestPage(array $entry): string
     {
+        $tabIcons = [
+            'overview' => '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>',
+            'timeline' => '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+            'request' => '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>',
+            'response' => '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>',
+            'route' => '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M6 9v2a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3V6"/><circle cx="18" cy="6" r="3"/></svg>',
+            'middleware' => '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>',
+            'views' => '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>',
+            'queries' => '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>',
+            'cache' => '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>',
+            'logs' => '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
+            'events' => '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
+            'mail' => '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>',
+            'queue' => '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/></svg>',
+            'dumps' => '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>',
+            'exceptions' => '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+        ];
+
         $tabs = [
             'overview' => $this->renderOverviewTab($entry),
             'timeline' => $this->renderCollectionTab('Timeline', $entry['timeline'] ?? []),
@@ -860,16 +913,18 @@ HTML;
 
         foreach ($tabs as $name => $panel) {
             $label = ucfirst($name);
+            $icon = $tabIcons[$name] ?? '';
+            $activeClass = $first ? ' active' : '';
             $nav[] = sprintf(
-                '<button type="button" data-tab="%s" style="border:0;background:%s;color:%s;padding:10px 14px;border-radius:999px;cursor:pointer;">%s</button>',
+                '<button type="button" class="tab-btn%s" data-tab="%s">%s<span>%s</span></button>',
+                $activeClass,
                 htmlspecialchars($name),
-                $first ? '#111827' : '#e5e7eb',
-                $first ? '#fff' : '#111827',
+                $icon,
                 htmlspecialchars($label)
             );
 
             $panels[] = sprintf(
-                '<section data-panel="%s" style="display:%s;margin-top:18px;">%s</section>',
+                '<section data-panel="%s" style="display:%s;">%s</section>',
                 htmlspecialchars($name),
                 $first ? 'block' : 'none',
                 $panel
@@ -877,29 +932,43 @@ HTML;
             $first = false;
         }
 
+        $status = (int) ($entry['response']['status'] ?? 0);
+        $statusColor = $status >= 500 ? '#dc2626' : ($status >= 400 ? '#d97706' : '#059669');
+        $statusBg = $status >= 500 ? '#fef2f2' : ($status >= 400 ? '#fffbeb' : '#ecfdf5');
+        $method = htmlspecialchars($entry['request']['method'] ?? '');
+        $path = htmlspecialchars($entry['request']['path'] ?? '');
+        $duration = number_format((float) ($entry['metrics']['total_ms'] ?? 0), 1);
         $id = htmlspecialchars($entry['id']);
+        $shortId = substr($id, 0, 8) . '...';
+
         $content = <<<HTML
-<div style="display:flex;align-items:center;justify-content:space-between;gap:16px;">
-  <div>
-    <h1 style="margin:0;">Request {$id}</h1>
-    <p style="margin:6px 0 0;color:#6b7280;">{$entry['request']['method']} {$entry['request']['path']}</p>
+<div class="detail-header">
+  <a href="{$this->prefix}/requests" class="back-link">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+    All Requests
+  </a>
+  <div class="detail-title-row">
+    <div class="detail-title-left">
+      <span class="method-badge" style="background:#2563eb;font-size:13px;">{$method}</span>
+      <h1>{$path}</h1>
+    </div>
+    <div class="detail-meta">
+      <span class="status-badge" style="background:{$statusBg};color:{$statusColor};font-size:13px;">{$status}</span>
+      <span class="meta-sep"></span>
+      <span class="meta-item">{$duration} ms</span>
+      <span class="meta-sep"></span>
+      <span class="meta-item mono" title="{$id}">{$shortId}</span>
+    </div>
   </div>
-  <a href="{$this->prefix}/requests" style="color:#111827;text-decoration:none;background:#e5e7eb;padding:10px 14px;border-radius:10px;">Back</a>
 </div>
-<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:18px;">%s</div>
-%s
+<div class="tab-bar">%s</div>
+<div class="tab-content">%s</div>
 <script>
-document.querySelectorAll('[data-tab]').forEach(function(button) {
+document.querySelectorAll('.tab-btn').forEach(function(button) {
   button.addEventListener('click', function() {
-    document.querySelectorAll('[data-tab]').forEach(function(other) {
-      other.style.background = '#e5e7eb';
-      other.style.color = '#111827';
-    });
-    document.querySelectorAll('[data-panel]').forEach(function(panel) {
-      panel.style.display = 'none';
-    });
-    button.style.background = '#111827';
-    button.style.color = '#fff';
+    document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+    document.querySelectorAll('[data-panel]').forEach(function(p) { p.style.display = 'none'; });
+    button.classList.add('active');
     document.querySelector('[data-panel="' + button.dataset.tab + '"]').style.display = 'block';
   });
 });
@@ -916,32 +985,40 @@ HTML;
         $exceptions = count($entry['exceptions'] ?? []);
         $views = count($entry['views'] ?? []);
 
+        $status = (int) ($entry['response']['status'] ?? 0);
+        $statusColor = $status >= 500 ? '#dc2626' : ($status >= 400 ? '#d97706' : '#059669');
+        $exColor = $exceptions > 0 ? '#dc2626' : '#111827';
+
         return <<<HTML
-<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;">
-  {$this->metricCard('Status', (string) ($entry['response']['status'] ?? 'n/a'))}
-  {$this->metricCard('Total', number_format((float) ($metrics['total_ms'] ?? 0), 1) . ' ms')}
-  {$this->metricCard('DB', number_format((float) ($metrics['db_ms'] ?? 0), 1) . ' ms')}
-  {$this->metricCard('Views', (string) $views)}
-  {$this->metricCard('Queries', (string) $queries)}
-  {$this->metricCard('Exceptions', (string) $exceptions)}
-  {$this->metricCard('Memory Peak', number_format((float) ($metrics['memory_peak_kb'] ?? 0), 0) . ' KB')}
+<div class="metric-grid">
+  {$this->metricCard('Status', (string) ($entry['response']['status'] ?? 'n/a'), $statusColor, 'status')}
+  {$this->metricCard('Total Time', number_format((float) ($metrics['total_ms'] ?? 0), 1) . ' ms', '#2563eb', 'time')}
+  {$this->metricCard('DB Time', number_format((float) ($metrics['db_ms'] ?? 0), 1) . ' ms', '#7c3aed', 'db')}
+  {$this->metricCard('Views', (string) $views, '#0891b2', 'views')}
+  {$this->metricCard('Queries', (string) $queries, '#7c3aed', 'queries')}
+  {$this->metricCard('Exceptions', (string) $exceptions, $exColor, 'exceptions')}
+  {$this->metricCard('Memory Peak', number_format((float) ($metrics['memory_peak_kb'] ?? 0), 0) . ' KB', '#059669', 'memory')}
 </div>
-<div style="margin-top:18px;background:#fff;border-radius:14px;padding:18px;">
-  <h2 style="margin-top:0;">Route</h2>
-  <pre style="white-space:pre-wrap;">{$this->pretty($entry['route'] ?? [])}</pre>
+<div class="card" style="margin-top:16px;">
+  <h3 class="card-title">Route Information</h3>
+  <pre>{$this->pretty($entry['route'] ?? [])}</pre>
 </div>
 HTML;
     }
 
     private function renderCollectionTab(string $title, array $items): string
     {
+        $count = count($items);
         $content = $items === []
-            ? '<p style="color:#6b7280;">No data captured.</p>'
-            : '<pre style="white-space:pre-wrap;">' . $this->pretty($items) . '</pre>';
+            ? '<div class="empty-state"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg><p>No data captured</p></div>'
+            : '<pre>' . $this->pretty($items) . '</pre>';
 
         return <<<HTML
-<div style="background:#fff;border-radius:14px;padding:18px;">
-  <h2 style="margin-top:0;">{$title}</h2>
+<div class="card">
+  <div class="card-header">
+    <h3 class="card-title">{$title}</h3>
+    <span class="badge">{$count} items</span>
+  </div>
   {$content}
 </div>
 HTML;
@@ -969,11 +1046,87 @@ HTML;
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{$title}</title>
   <style>
-    body { margin:0; background:#f3f4f6; color:#111827; font:14px/1.5 system-ui,sans-serif; }
-    main { max-width:1200px; margin:0 auto; padding:24px; }
-    table tbody tr td { padding:12px; border-bottom:1px solid #e5e7eb; }
-    a { color:#111827; }
-    pre { margin:0; font:12px/1.5 ui-monospace,SFMono-Regular,monospace; background:#f9fafb; padding:14px; border-radius:12px; overflow:auto; }
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin:0; background:#f8fafc; color:#111827; font:14px/1.6 -apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif; }
+    main { max-width:1280px; margin:0 auto; padding:28px 24px; }
+    a { color:#2563eb; text-decoration:none; }
+    a:hover { text-decoration:underline; }
+    pre { margin:0; font:12px/1.6 ui-monospace,SFMono-Regular,'SF Mono',Menlo,monospace; background:#f8fafc; padding:16px; border-radius:10px; overflow:auto; white-space:pre-wrap; border:1px solid #e5e7eb; }
+
+    /* Page header */
+    .page-header { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:24px; }
+    .header-left { display:flex; flex-direction:column; gap:4px; }
+    .logo-row { display:flex; align-items:center; gap:10px; }
+    .logo-row h1 { margin:0; font-size:22px; font-weight:700; color:#0f172a; }
+    .subtitle { margin:0; color:#64748b; font-size:13px; }
+    .subtitle strong { color:#334155; }
+    .btn-clear { display:inline-flex; align-items:center; gap:6px; background:#fff; color:#64748b; border:1px solid #e2e8f0; border-radius:8px; padding:8px 14px; font-size:13px; cursor:pointer; font-weight:500; transition:all .15s; }
+    .btn-clear:hover { background:#fef2f2; color:#dc2626; border-color:#fecaca; }
+
+    /* Table */
+    .table-wrap { background:#fff; border-radius:12px; border:1px solid #e2e8f0; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,.04); }
+    table { width:100%; border-collapse:collapse; }
+    thead { background:#f8fafc; }
+    thead th { text-align:left; padding:10px 14px; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.05em; color:#64748b; border-bottom:1px solid #e2e8f0; }
+    tbody tr { transition:background .1s; }
+    tbody tr:hover, .req-row:hover { background:#f1f5f9 !important; }
+    tbody td { padding:10px 14px; border-bottom:1px solid #f1f5f9; font-size:13px; white-space:nowrap; }
+    tbody tr:last-child td { border-bottom:none; }
+    .path-cell code { font:12px/1.4 ui-monospace,SFMono-Regular,monospace; color:#334155; background:#f1f5f9; padding:2px 6px; border-radius:4px; }
+    .dim { color:#64748b; }
+
+    /* Badges */
+    .method-badge { display:inline-block; padding:2px 8px; border-radius:4px; color:#fff; font-size:11px; font-weight:700; letter-spacing:.03em; font-family:ui-monospace,SFMono-Regular,monospace; }
+    .status-badge { display:inline-block; padding:2px 10px; border-radius:999px; font-size:12px; font-weight:700; font-family:ui-monospace,SFMono-Regular,monospace; }
+
+    /* Detail page */
+    .detail-header { margin-bottom:24px; }
+    .back-link { display:inline-flex; align-items:center; gap:4px; color:#64748b; font-size:13px; font-weight:500; margin-bottom:12px; }
+    .back-link:hover { color:#2563eb; text-decoration:none; }
+    .detail-title-row { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; }
+    .detail-title-left { display:flex; align-items:center; gap:10px; }
+    .detail-title-left h1 { margin:0; font-size:22px; font-weight:700; font-family:ui-monospace,SFMono-Regular,monospace; color:#0f172a; }
+    .detail-meta { display:flex; align-items:center; gap:10px; }
+    .meta-sep { width:1px; height:16px; background:#e2e8f0; }
+    .meta-item { color:#64748b; font-size:13px; font-weight:500; }
+    .mono { font-family:ui-monospace,SFMono-Regular,monospace; font-size:12px; }
+
+    /* Tabs */
+    .tab-bar { display:flex; gap:2px; flex-wrap:wrap; background:#f1f5f9; padding:4px; border-radius:10px; margin-bottom:20px; }
+    .tab-btn { display:inline-flex; align-items:center; gap:5px; border:0; background:transparent; color:#64748b; padding:7px 12px; border-radius:7px; cursor:pointer; font-size:12.5px; font-weight:500; transition:all .15s; font-family:inherit; }
+    .tab-btn:hover { color:#334155; background:#e2e8f0; }
+    .tab-btn.active { background:#fff; color:#0f172a; box-shadow:0 1px 2px rgba(0,0,0,.06); }
+    .tab-btn svg { opacity:.6; flex-shrink:0; }
+    .tab-btn.active svg { opacity:1; }
+
+    /* Cards */
+    .card { background:#fff; border-radius:12px; border:1px solid #e2e8f0; padding:20px; box-shadow:0 1px 3px rgba(0,0,0,.04); }
+    .card-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+    .card-title { margin:0; font-size:15px; font-weight:600; color:#0f172a; }
+    .badge { display:inline-block; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:600; background:#f1f5f9; color:#64748b; }
+
+    /* Metric grid */
+    .metric-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:12px; }
+    .metric-card { position:relative; background:#fff; border-radius:10px; border:1px solid #e2e8f0; padding:16px 16px 16px 20px; overflow:hidden; box-shadow:0 1px 2px rgba(0,0,0,.03); }
+    .metric-accent { position:absolute; left:0; top:0; bottom:0; width:4px; border-radius:4px 0 0 4px; }
+    .metric-label { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.05em; color:#94a3b8; margin-bottom:6px; }
+    .metric-value { font-size:22px; font-weight:700; line-height:1.2; }
+
+    /* Empty state */
+    .empty-state { display:flex; flex-direction:column; align-items:center; gap:8px; padding:40px 20px; color:#94a3b8; }
+    .empty-state p { margin:0; font-size:13px; }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      main { padding:16px 12px; }
+      .page-header { flex-direction:column; align-items:flex-start; }
+      .detail-title-row { flex-direction:column; align-items:flex-start; }
+      .detail-meta { flex-wrap:wrap; }
+      .metric-grid { grid-template-columns:repeat(2, 1fr); }
+      .tab-bar { gap:1px; }
+      .tab-btn span { display:none; }
+      .tab-btn { padding:8px; }
+    }
   </style>
 </head>
 <body>
@@ -983,17 +1136,41 @@ HTML;
 HTML;
     }
 
-    private function metricCard(string $label, string $value): string
+    private function metricCard(string $label, string $value, string $accentColor = '#111827', string $type = ''): string
     {
         $label = htmlspecialchars($label);
         $value = htmlspecialchars($value);
 
         return <<<HTML
-<div style="background:#fff;border-radius:14px;padding:18px;">
-  <div style="color:#6b7280;font-size:12px;text-transform:uppercase;letter-spacing:.05em;">{$label}</div>
-  <div style="font-size:24px;font-weight:700;margin-top:8px;">{$value}</div>
+<div class="metric-card">
+  <div class="metric-accent" style="background:{$accentColor};"></div>
+  <div class="metric-label">{$label}</div>
+  <div class="metric-value" style="color:{$accentColor};">{$value}</div>
 </div>
 HTML;
+    }
+
+    private function timeAgo(string $datetime): string
+    {
+        $now = time();
+        $time = strtotime($datetime);
+        if ($time === false) {
+            return $datetime;
+        }
+        $diff = $now - $time;
+        if ($diff < 5) {
+            return 'just now';
+        }
+        if ($diff < 60) {
+            return $diff . 's ago';
+        }
+        if ($diff < 3600) {
+            return floor($diff / 60) . 'm ago';
+        }
+        if ($diff < 86400) {
+            return floor($diff / 3600) . 'h ago';
+        }
+        return floor($diff / 86400) . 'd ago';
     }
 
     private function serverTiming(): string

@@ -13,6 +13,7 @@ require_once __DIR__ . '/../core/Database.php';
 require_once __DIR__ . '/../core/EventEmitter.php';
 require_once __DIR__ . '/../core/Logger.php';
 require_once __DIR__ . '/../core/Middleware.php';
+require_once __DIR__ . '/../core/Relation.php';
 require_once __DIR__ . '/../core/Model.php';
 require_once __DIR__ . '/../core/ProjectScaffolder.php';
 require_once __DIR__ . '/../core/Request.php';
