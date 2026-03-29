@@ -1,4 +1,4 @@
-@title('Home')
+@title('SparkPHP — Write what matters.')
 @bodyClass('landing-page')
 
 <style>
@@ -6,819 +6,876 @@
         overflow: hidden;
     }
 
-    .landing-page .landing-shell {
+    .landing-shell {
         max-width: 1200px;
         margin: 0 auto;
         padding: 2rem 1.5rem 5rem;
+        display: grid;
+        gap: 5rem;
     }
 
-    .landing-page .hero {
-        padding: 1.25rem 0 2rem;
+    /* ── Hero ── */
+    .hero {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 3rem;
+        align-items: center;
+        padding-top: 2rem;
     }
 
-    .landing-page .hero__panel {
-        position: relative;
-        min-height: 34rem;
-        border: 1px solid var(--border-soft);
-        border-radius: 2rem;
-        background:
-            radial-gradient(circle at center, rgba(255, 166, 58, 0.18), transparent 42%),
-            linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 70%),
-            var(--surface-1);
-        box-shadow: var(--shadow-soft);
-        overflow: hidden;
-    }
-
-    :root[data-theme='light'] .landing-page .hero__panel {
-        background:
-            radial-gradient(circle at center, rgba(255, 166, 58, 0.2), transparent 44%),
-            linear-gradient(180deg, rgba(255, 255, 255, 0.6), transparent 70%),
-            var(--surface-2);
-    }
-
-    .landing-page .hero__panel::before,
-    .landing-page .hero__panel::after {
-        content: "";
-        position: absolute;
-        border-radius: 50%;
-        filter: blur(12px);
-        opacity: .85;
-    }
-
-    .landing-page .hero__panel::before {
-        width: 24rem;
-        height: 24rem;
-        left: -7rem;
-        top: -8rem;
+    .hero__eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: .5rem;
+        padding: .35rem .85rem;
+        border-radius: 999px;
         background: rgba(255, 166, 58, 0.1);
-    }
-
-    .landing-page .hero__panel::after {
-        width: 20rem;
-        height: 20rem;
-        right: -5rem;
-        bottom: -6rem;
-        background: rgba(255, 255, 255, 0.04);
-    }
-
-    .landing-page .hero__content {
-        position: relative;
-        z-index: 1;
-        max-width: 44rem;
-        margin: 0 auto;
-        padding: 5rem 1.5rem;
-        text-align: center;
-    }
-
-    .landing-page .hero__eyebrow {
-        display: inline-flex;
-        align-items: center;
-        gap: .55rem;
-        padding: .65rem 1rem;
-        border-radius: 999px;
-        background: rgba(20, 24, 36, 0.7);
-        border: 1px solid rgba(255, 255, 255, 0.04);
-        color: var(--text-secondary);
-        font-size: .92rem;
-    }
-
-    :root[data-theme='light'] .landing-page .hero__eyebrow {
-        background: rgba(255, 255, 255, 0.78);
-        border-color: rgba(148, 163, 184, 0.16);
-    }
-
-    .landing-page .hero__dot,
-    .landing-page .dev-strip__dot {
-        width: .5rem;
-        height: .5rem;
-        border-radius: 999px;
-        background: var(--brand);
-        box-shadow: 0 0 0 .3rem rgba(255, 166, 58, 0.12);
-    }
-
-    .landing-page .hero h1,
-    .landing-page .section-head h2 {
-        margin: 0;
-        letter-spacing: -.05em;
-    }
-
-    .landing-page .hero h1 {
-        margin-top: 1.8rem;
-        font-size: clamp(3.5rem, 10vw, 6rem);
-        line-height: .95;
-    }
-
-    .landing-page .hero h1 span {
         color: var(--brand);
+        font-size: .8rem;
+        font-weight: 700;
+        letter-spacing: .06em;
+        text-transform: uppercase;
     }
 
-    .landing-page .hero p {
-        max-width: 34rem;
-        margin: 1.4rem auto 0;
+    .hero__eyebrow::before {
+        content: "";
+        width: .45rem;
+        height: .45rem;
+        border-radius: 50%;
+        background: currentColor;
+    }
+
+    .hero__title {
+        margin: 1.5rem 0 0;
+        font-size: clamp(3rem, 7vw, 4.5rem);
+        line-height: .95;
+        letter-spacing: -.05em;
+        font-weight: 700;
+    }
+
+    .hero__title em {
+        font-style: normal;
+        color: var(--brand);
+        text-decoration: underline;
+        text-decoration-color: var(--brand);
+        text-underline-offset: .15em;
+        text-decoration-thickness: .06em;
+    }
+
+    .hero__copy {
+        margin: 1.25rem 0 0;
+        max-width: 32rem;
         color: var(--text-secondary);
-        font-size: clamp(1.05rem, 2.4vw, 1.75rem);
-        line-height: 1.55;
+        font-size: 1.08rem;
+        line-height: 1.7;
     }
 
-    .landing-page .hero__actions {
+    .hero__actions {
         display: flex;
-        justify-content: center;
         align-items: center;
-        gap: 1rem;
+        gap: .75rem;
         flex-wrap: wrap;
-        margin-top: 2.25rem;
+        margin-top: 2rem;
     }
 
-    .landing-page .hero__cta {
-        min-width: 10.5rem;
-        padding-inline: 1.45rem;
+    .hero__actions .site-link {
+        border-radius: 999px;
+        padding-inline: 1.2rem;
+        gap: .4rem;
     }
 
-    .landing-page .command-pill {
-        display: inline-flex;
+    .hero__stats {
+        display: flex;
         align-items: center;
-        gap: .9rem;
-        min-height: 3.2rem;
-        padding: .95rem 1.15rem;
+        gap: 1.5rem;
+        margin-top: 2.5rem;
+    }
+
+    .hero__stat {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .hero__stat strong {
+        font-size: 1rem;
+        font-weight: 700;
+        letter-spacing: -.02em;
+    }
+
+    .hero__stat small {
+        color: var(--text-muted);
+        font-size: .82rem;
+        margin-top: .15rem;
+    }
+
+    .hero__terminal {
         border-radius: 1rem;
-        background: rgba(20, 24, 36, 0.72);
+        overflow: hidden;
         border: 1px solid var(--border-soft);
-        color: var(--text-secondary);
-        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
+        background: #1a1a2e;
+        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
     }
 
-    :root[data-theme='light'] .landing-page .command-pill {
-        background: rgba(255, 255, 255, 0.8);
+    :root[data-theme='light'] .hero__terminal {
+        background: #1e1e2e;
     }
 
-    .landing-page .command-pill span {
+    .terminal__bar {
+        display: flex;
+        align-items: center;
+        gap: .6rem;
+        padding: .85rem 1.1rem;
+        background: rgba(255, 255, 255, 0.04);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .terminal__dots {
+        display: flex;
+        gap: .4rem;
+    }
+
+    .terminal__dots span {
+        width: .7rem;
+        height: .7rem;
+        border-radius: 50%;
+    }
+
+    .terminal__dots span:nth-child(1) { background: #ff5f57; }
+    .terminal__dots span:nth-child(2) { background: #febc2e; }
+    .terminal__dots span:nth-child(3) { background: #28c840; }
+
+    .terminal__label {
+        margin-left: auto;
+        color: rgba(255, 255, 255, 0.4);
+        font-family: "JetBrains Mono", "Fira Code", monospace;
+        font-size: .78rem;
+    }
+
+    .hero__terminal pre {
+        margin: 0;
+        padding: 1.4rem 1.5rem;
+        color: #e2e8f0;
+        font-size: .88rem;
+        line-height: 2;
+        overflow-x: auto;
+    }
+
+    .hero__terminal .line-comment {
+        color: #6b7394;
+    }
+
+    .hero__terminal .line-keyword {
         color: var(--brand);
         font-weight: 700;
     }
 
-    .landing-page .command-pill code {
-        font-size: .95rem;
-        white-space: nowrap;
+    .hero__terminal .line-fn {
+        color: #7dd3fc;
     }
 
-    .landing-page .section {
-        padding: 2rem 0 0;
+    .hero__terminal .line-string {
+        color: #86efac;
     }
 
-    .landing-page .section-head {
-        max-width: 36rem;
-        margin: 0 auto;
+    .hero__terminal .line-var {
+        color: #c4b5fd;
+    }
+
+    /* ── Sections ── */
+    .section {
+        position: relative;
+    }
+
+    .section-tag {
+        display: inline-block;
+        color: var(--brand);
+        font-size: .8rem;
+        font-weight: 700;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+        margin-bottom: .75rem;
+    }
+
+    .section-head {
+        max-width: 42rem;
+        margin: 0 auto 2.5rem;
         text-align: center;
     }
 
-    .landing-page .section-head h2 {
-        font-size: clamp(2rem, 5vw, 3.2rem);
+    .section-head h2 {
+        margin: .5rem 0 0;
+        font-size: clamp(2rem, 4vw, 2.8rem);
+        letter-spacing: -.04em;
+        line-height: 1.1;
     }
 
-    .landing-page .section-head p {
+    .section-head p {
         margin: 1rem 0 0;
         color: var(--text-secondary);
         font-size: 1.05rem;
         line-height: 1.7;
     }
 
-    .landing-page .feature-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-        gap: 1.25rem;
-        margin-top: 3rem;
-    }
-
-    .landing-page .feature-card {
-        padding: 1.5rem;
-        border-radius: 1.35rem;
+    /* ── Cards ── */
+    .card {
+        position: relative;
+        padding: 1.75rem;
+        border-radius: 1.25rem;
         border: 1px solid var(--border-soft);
         background: var(--surface-1);
-        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.16);
-        display: flex;
-        flex-direction: column;
-        flex: 1;
+        transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease;
     }
 
-    :root[data-theme='light'] .landing-page .feature-card {
-        background: rgba(255, 255, 255, 0.82);
+    :root[data-theme='light'] .card {
+        background: rgba(255, 255, 255, 0.84);
     }
 
-    .landing-page .feature-card__icon {
+    .card:hover {
+        transform: translateY(-2px);
+        border-color: var(--border-strong);
+        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.12);
+    }
+
+    .card__tag {
+        display: inline-flex;
+        align-items: center;
+        padding: .2rem .7rem;
+        border-radius: 999px;
+        background: rgba(255, 166, 58, 0.1);
+        color: var(--brand);
+        font-size: .75rem;
+        font-weight: 700;
+        letter-spacing: .05em;
+        text-transform: uppercase;
+    }
+
+    .card__icon {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 2.65rem;
-        height: 2.65rem;
-        border-radius: .9rem;
-        background: var(--surface-3);
+        width: 2.5rem;
+        height: 2.5rem;
+        border-radius: .75rem;
+        background: rgba(255, 166, 58, 0.1);
         color: var(--brand);
-        font-size: 1.2rem;
-        margin-bottom: 1.25rem;
+        font-size: 1.1rem;
+        margin-bottom: .75rem;
     }
 
-    .landing-page .feature-card h3 {
-        margin: 0 0 .8rem;
-        font-size: 1.35rem;
+    .card h3 {
+        margin: .75rem 0 .5rem;
+        font-size: 1.25rem;
         letter-spacing: -.03em;
     }
 
-    .landing-page .feature-card p {
+    .card p {
         margin: 0;
         color: var(--text-secondary);
-        line-height: 1.8;
-        flex: 1;
+        line-height: 1.7;
+        font-size: .95rem;
     }
 
-    .landing-page .feature-card code {
-        color: var(--text-primary);
-        font-size: .92em;
-    }
-
-    .landing-page .feature-card-link {
-        text-decoration: none;
-        color: inherit;
-        display: flex;
-        border-radius: 1.35rem;
-        transition: transform .2s ease, box-shadow .2s ease;
-    }
-
-    .landing-page .feature-card-link:hover {
-        transform: translateY(-4px);
-    }
-
-    .landing-page .feature-card-link:hover .feature-card {
-        border-color: var(--brand);
-        box-shadow: 0 20px 48px rgba(255, 166, 58, 0.12), 0 16px 40px rgba(0, 0, 0, 0.16);
-    }
-
-    .landing-page .capability-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-        gap: 1rem;
-        margin-top: 2.5rem;
-    }
-
-    .landing-page .capability-card {
-        padding: 1.25rem 1.35rem;
-        border-radius: 1.1rem;
-        border: 1px solid var(--border-soft);
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent), var(--surface-1);
-        display: flex;
-        flex-direction: column;
-    }
-
-    :root[data-theme='light'] .landing-page .capability-card {
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.5), transparent), rgba(255, 255, 255, 0.84);
-    }
-
-    .landing-page .capability-card strong {
-        display: block;
-        margin-bottom: .55rem;
-        font-size: 1.05rem;
-        letter-spacing: -.02em;
-    }
-
-    .landing-page .capability-card p {
-        margin: 0 0 .9rem;
+    .card ul {
+        margin: .75rem 0 0;
+        padding-left: 1.1rem;
         color: var(--text-secondary);
-        line-height: 1.65;
-        flex: 1;
+        line-height: 1.7;
+        font-size: .95rem;
     }
 
-    .landing-page .capability-card code {
-        display: inline-block;
-        padding: .45rem .7rem;
-        border-radius: .75rem;
-        background: var(--surface-3);
-        color: var(--text-primary);
-        font-size: .88rem;
-        margin-top: auto;
-        align-self: flex-start;
+    .card ul li + li {
+        margin-top: .4rem;
     }
 
-    .landing-page .capability-card-link {
-        text-decoration: none;
-        color: inherit;
-        display: flex;
-        border-radius: 1.1rem;
-        transition: transform .2s ease;
-    }
-
-    .landing-page .capability-card-link .capability-card {
-        flex: 1;
-    }
-
-    .landing-page .capability-card-link:hover {
-        transform: translateY(-3px);
-    }
-
-    .landing-page .capability-card-link:hover .capability-card {
-        border-color: var(--brand);
-    }
-
-    .landing-page .showcase {
-        padding-top: 4.5rem;
-    }
-
-    .landing-page .code-window {
-        max-width: 46rem;
-        margin: 3rem auto 0;
-        border-radius: 1.15rem;
-        overflow: hidden;
-        border: 1px solid var(--border-soft);
-        background: var(--surface-code);
-        box-shadow: var(--shadow-soft);
-    }
-
-    .landing-page .code-window__bar {
+    .card__links {
         display: flex;
         align-items: center;
         gap: .5rem;
-        padding: .9rem 1.15rem;
-        border-bottom: 1px solid var(--border-soft);
-        color: var(--text-muted);
-        font-size: .9rem;
+        flex-wrap: wrap;
+        margin-top: 1rem;
     }
 
-    .landing-page .code-window__dots {
+    .card__links a {
         display: inline-flex;
         align-items: center;
-        gap: .35rem;
+        padding: .25rem .65rem;
+        border-radius: 999px;
+        border: 1px solid var(--border-soft);
+        color: var(--text-secondary);
+        font-size: .84rem;
+        transition: border-color .2s ease, color .2s ease;
     }
 
-    .landing-page .code-window__dots span {
+    .card__links a:hover {
+        color: var(--text-primary);
+        border-color: var(--border-strong);
+    }
+
+    /* ── Pillar Grid (3 cols) ── */
+    .pillar-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.25rem;
+    }
+
+    /* ── Capability Grid (3 cols) ── */
+    .capability-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.1rem;
+    }
+
+    .capability-grid .card {
+        text-decoration: none;
+        color: inherit;
+    }
+
+    .capability-grid .card code {
+        display: inline-block;
+        margin-top: .75rem;
+        padding: .35rem .65rem;
+        border-radius: .6rem;
+        background: var(--surface-3);
+        color: var(--text-primary);
+        font-size: .82rem;
+    }
+
+    /* ── Showcase ── */
+    .showcase-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+        max-width: 48rem;
+        margin: 0 auto;
+    }
+
+    .code-window {
+        border-radius: 1rem;
+        overflow: hidden;
+        border: 1px solid var(--border-soft);
+        background: #1a1a2e;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+    }
+
+    :root[data-theme='light'] .code-window {
+        background: #1e1e2e;
+    }
+
+    .code-window__bar {
+        display: flex;
+        align-items: center;
+        gap: .6rem;
+        padding: .85rem 1.1rem;
+        background: rgba(255, 255, 255, 0.04);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .code-window__dots {
+        display: flex;
+        gap: .4rem;
+    }
+
+    .code-window__dots span {
         width: .7rem;
         height: .7rem;
-        border-radius: 999px;
-        background: rgba(255, 255, 255, 0.14);
+        border-radius: 50%;
     }
 
-    :root[data-theme='light'] .landing-page .code-window__dots span {
-        background: rgba(15, 23, 42, 0.14);
-    }
+    .code-window__dots span:nth-child(1) { background: #ff5f57; }
+    .code-window__dots span:nth-child(2) { background: #febc2e; }
+    .code-window__dots span:nth-child(3) { background: #28c840; }
 
-    .landing-page .code-window__file {
+    .code-window__file {
         margin-left: auto;
+        color: rgba(255, 255, 255, 0.4);
         font-family: "JetBrains Mono", "Fira Code", monospace;
+        font-size: .78rem;
     }
 
-    .landing-page .code-window pre {
+    .code-window pre {
         margin: 0;
-        padding: 1.75rem;
-        color: #d7dfef;
-        font-size: .94rem;
+        padding: 1.4rem 1.5rem;
+        color: #e2e8f0;
+        font-size: .88rem;
         line-height: 2;
         overflow-x: auto;
     }
 
-    :root[data-theme='light'] .landing-page .code-window pre {
-        color: #1f2937;
+    .code-window .line-comment { color: #6b7394; }
+    .code-window .line-keyword { color: var(--brand); font-weight: 700; }
+    .code-window .line-fn { color: #7dd3fc; }
+    .code-window .line-string { color: #86efac; }
+    .code-window .line-var { color: #c4b5fd; }
+
+    /* ── Starters Grid ── */
+    .starter-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1rem;
     }
 
-    .landing-page .code-line-comment {
-        color: #74809b;
+    .starter-grid .card {
+        text-decoration: none;
+        color: inherit;
     }
 
-    .landing-page .code-line-keyword {
+    .starter-grid .card small {
+        display: block;
+        margin-top: .75rem;
+        color: var(--text-muted);
+        font-size: .85rem;
+        line-height: 1.6;
+    }
+
+    .starter-intro {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: .5rem;
+        flex-wrap: wrap;
+        margin-bottom: 1.5rem;
+        color: var(--text-secondary);
+        font-size: .92rem;
+    }
+
+    /* ── CTA Section ── */
+    .cta-section {
+        text-align: center;
+        padding: 4rem 2rem;
+        border-radius: 1.5rem;
+        background:
+            linear-gradient(135deg, rgba(255, 166, 58, 0.08), rgba(255, 166, 58, 0.02)),
+            var(--surface-1);
+        border: 1px solid var(--border-soft);
+    }
+
+    :root[data-theme='light'] .cta-section {
+        background:
+            linear-gradient(135deg, rgba(255, 166, 58, 0.12), rgba(255, 166, 58, 0.04)),
+            rgba(255, 255, 255, 0.9);
+    }
+
+    .cta-section .cta-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 3rem;
+        height: 3rem;
+        margin-bottom: 1.25rem;
         color: var(--brand);
-        font-weight: 700;
     }
 
-    .landing-page .dev-strip {
+    .cta-section .cta-icon svg {
+        width: 2rem;
+        height: 2rem;
+    }
+
+    .cta-section h2 {
+        margin: 0 0 .75rem;
+        font-size: clamp(1.8rem, 4vw, 2.5rem);
+        letter-spacing: -.04em;
+    }
+
+    .cta-section p {
+        margin: 0 auto 2rem;
+        max-width: 34rem;
+        color: var(--text-secondary);
+        font-size: 1.05rem;
+        line-height: 1.7;
+    }
+
+    /* ── Dev Strip ── */
+    .dev-strip {
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 1rem;
         flex-wrap: wrap;
-        max-width: 46rem;
-        margin: 2rem auto 0;
-        padding: 1.1rem 1.2rem;
+        padding: 1rem 1.2rem;
         border-radius: 1rem;
         border: 1px solid var(--border-strong);
-        background: linear-gradient(90deg, rgba(255, 166, 58, 0.12), rgba(255, 166, 58, 0.04));
+        background: linear-gradient(90deg, rgba(255, 166, 58, 0.1), rgba(255, 166, 58, 0.03));
         color: var(--text-secondary);
-        font-size: .92rem;
+        font-size: .88rem;
     }
 
-    .landing-page .dev-strip__group {
+    .dev-strip__group {
         display: inline-flex;
         align-items: center;
-        gap: .8rem;
+        gap: .75rem;
         flex-wrap: wrap;
     }
 
-    .landing-page .dev-strip strong {
+    .dev-strip__dot {
+        width: .5rem;
+        height: .5rem;
+        border-radius: 50%;
+        background: var(--brand);
+        box-shadow: 0 0 0 .3rem rgba(255, 166, 58, 0.12);
+    }
+
+    .dev-strip strong {
         color: var(--text-primary);
     }
 
-    .landing-page .dev-strip__sep {
+    .dev-strip__sep {
         width: 1px;
         height: 1rem;
         background: var(--border-soft);
     }
 
-    .landing-page .dev-strip__actions {
+    .dev-strip__actions {
         display: inline-flex;
         align-items: center;
         gap: .5rem;
         flex-wrap: wrap;
     }
 
-    .landing-page .dev-strip a {
+    .dev-strip a {
         color: var(--brand);
         font-weight: 600;
-        text-decoration: none;
-        padding: .3rem .65rem;
+        padding: .25rem .6rem;
         border-radius: .5rem;
         transition: background .15s ease;
     }
 
-    .landing-page .dev-strip a:hover {
-        background: rgba(255, 166, 58, 0.12);
+    .dev-strip a:hover {
+        background: rgba(255, 166, 58, 0.1);
     }
 
-    .landing-page .dev-strip__actions .dev-strip__sep {
-        height: .85rem;
+    .dev-strip__actions .dev-strip__sep {
+        height: .8rem;
     }
 
-    @media (max-width: 720px) {
-        .landing-page .landing-shell {
-            padding: 1.25rem 1rem 4rem;
+    /* ── Animations ── */
+    @keyframes fade-up {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+        .hero__content { animation: fade-up .5s ease both; }
+        .hero__terminal { animation: fade-up .5s ease .1s both; }
+        .section { animation: fade-up .4s ease both; }
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 1080px) {
+        .pillar-grid,
+        .capability-grid,
+        .starter-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @media (max-width: 820px) {
+        .landing-shell {
+            padding: 1.5rem 1rem 4rem;
+            gap: 3.5rem;
         }
 
-        .landing-page .hero__panel {
-            min-height: auto;
+        .hero {
+            grid-template-columns: 1fr;
+            gap: 2rem;
         }
 
-        .landing-page .hero__content {
-            padding: 3.5rem 1.2rem;
+        .pillar-grid,
+        .capability-grid,
+        .starter-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 640px) {
+        .hero__title {
+            font-size: clamp(2.5rem, 12vw, 3.5rem);
         }
 
-        .landing-page .hero__actions,
-        .landing-page .dev-strip {
+        .hero__actions {
+            flex-direction: column;
             align-items: stretch;
         }
 
-        .landing-page .hero__cta,
-        .landing-page .command-pill,
-        .landing-page .dev-strip a {
-            width: 100%;
+        .hero__actions .site-button,
+        .hero__actions .site-link {
             justify-content: center;
         }
 
-        .landing-page .command-pill code {
-            white-space: normal;
-            text-align: center;
+        .hero__stats {
+            flex-wrap: wrap;
+            gap: 1rem;
         }
 
-        .landing-page .feature-grid {
-            grid-template-columns: 1fr;
-        }
-
-        .landing-page .code-window pre {
-            padding: 1.2rem;
-            font-size: .85rem;
+        .code-window__file,
+        .terminal__label {
+            display: none;
         }
     }
 </style>
 
 <div class="landing-shell">
+
+    <!-- ── Hero ── -->
     <section class="hero" id="hero">
-        <div class="hero__panel">
-            <div class="hero__content">
-                <div class="hero__eyebrow">
-                    <span class="hero__dot"></span>
-                    <span>Framework PHP minimalista e poderoso</span>
+        <div class="hero__content">
+            <div class="hero__eyebrow">Open source</div>
+
+            <h1 class="hero__title">Write what<br><em>matters.</em></h1>
+
+            <p class="hero__copy">
+                Framework PHP file-based, zero config, com rotas
+                que viram arquivos. Sem boilerplate, sem magia.
+                Runtime visível e um setup extra.
+            </p>
+
+            <div class="hero__actions">
+                <a href="{{ route('docs.show', ['slug' => '01-installation']) }}" class="site-button site-button--primary">Começar agora &rarr;</a>
+                <a href="https://github.com/dbsdenis/sparkphp" class="site-link" target="_blank" rel="noreferrer">GitHub</a>
+            </div>
+
+            <div class="hero__stats">
+                <div class="hero__stat">
+                    <strong>File-based</strong>
+                    <small>Rotas</small>
                 </div>
-
-                <h1><span>Spark</span>PHP</h1>
-
-                <p>
-                    Write what matters. Mais simples, mais previsível, mais observável.
-                </p>
-
-                <div class="hero__actions">
-                    <a href="{{ route('docs.show', ['slug' => '01-installation']) }}" class="site-button site-button--primary hero__cta">Começar agora</a>
-
-                    <a href="{{ route('docs.index') }}" class="command-pill" aria-label="Ver documentação completa">
-                        <span>$</span>
-                        <code>composer create-project spark/spark</code>
-                    </a>
+                <div class="hero__stat">
+                    <strong>Zero setup</strong>
+                    <small>Config</small>
+                </div>
+                <div class="hero__stat">
+                    <strong>8.2+</strong>
+                    <small>PHP</small>
                 </div>
             </div>
         </div>
-    </section>
 
-    <section class="section" id="features">
-        <div class="section-head">
-            <h2>Tudo que você precisa</h2>
-            <p>Construído para ser simples, rápido e sem configuração desnecessária.</p>
-        </div>
-
-        <div class="feature-grid">
-            <a href="{{ route('docs.show', ['slug' => '02-routing']) }}" class="feature-card-link">
-            <article class="feature-card">
-                <div class="feature-card__icon">📁</div>
-                <h3>File-based Routing</h3>
-                <p>
-                    <code>app/routes/users.[id].php</code> → <code>/users/:id</code>.
-                    Parâmetros dinâmicos, rotas nomeadas com <code>name()</code> e URL gerada via <code>route()</code>.
-                </p>
-            </article>
-            </a>
-
-            <a href="{{ route('docs.show', ['slug' => '04-views']) }}" class="feature-card-link">
-            <article class="feature-card">
-                <div class="feature-card__icon">✨</div>
-                <h3>Spark Templates</h3>
-                <p>
-                    Extensão <code>.spark</code> com pipes (<code>$name | upper</code>), form helpers,
-                    componentes com slots e layout automático.
-                </p>
-            </article>
-            </a>
-
-            <a href="{{ route('docs.show', ['slug' => '01-installation']) }}" class="feature-card-link">
-            <article class="feature-card">
-                <div class="feature-card__icon">⚙️</div>
-                <h3>Zero Config</h3>
-                <p>
-                    Um <code>.env</code> cobre a configuracao obrigatoria do framework. Para agrupar
-                    valores da aplicacao, use <code>config('app.name')</code> em <code>app/config/</code>.
-                </p>
-            </article>
-            </a>
-
-            <a href="{{ route('docs.show', ['slug' => '02-routing']) }}" class="feature-card-link">
-            <article class="feature-card">
-                <div class="feature-card__icon">🚀</div>
-                <h3>Auto DI</h3>
-                <p>
-                    Type-hint na closure = injeção automática. Misture <code>Request</code>, <code>Session</code>
-                    e parâmetros de URL na mesma assinatura.
-                </p>
-            </article>
-            </a>
-
-            <a href="{{ route('docs.show', ['slug' => '03-request-response']) }}" class="feature-card-link">
-            <article class="feature-card">
-                <div class="feature-card__icon">🔄</div>
-                <h3>Smart Resolver</h3>
-                <p>
-                    Retorne um <code>array</code> e a mesma rota serve JSON para APIs e HTML via view espelho
-                    para browsers — sem <code>if</code>.
-                </p>
-            </article>
-            </a>
-
-            <a href="{{ route('docs.show', ['slug' => '06-validation']) }}" class="feature-card-link">
-            <article class="feature-card">
-                <div class="feature-card__icon">✅</div>
-                <h3>Validação Inline</h3>
-                <p>
-                    Uma chamada <code>validate()</code> com regras fluentes. Falhou? JSON 422 para API,
-                    redirect com <code>old()</code> para form.
-                </p>
-            </article>
-            </a>
-
-            <a href="{{ route('docs.show', ['slug' => '07-middleware']) }}" class="feature-card-link">
-            <article class="feature-card">
-                <div class="feature-card__icon">🛡️</div>
-                <h3>Middleware Simples</h3>
-                <p>
-                    Arquivo em <code>app/middleware/</code> = alias pronto. Aplique com <code>guard()</code>,
-                    herde via <code>app/routes/_middleware.php</code> ou organize por pastas como <code>[auth]</code>.
-                </p>
-            </article>
-            </a>
-
-            <a href="{{ route('docs.show', ['slug' => '05-database']) }}" class="feature-card-link">
-            <article class="feature-card">
-                <div class="feature-card__icon">🗄️</div>
-                <h3>Database & ORM</h3>
-                <p>
-                    QueryBuilder fluente, Models com relacionamentos, soft deletes, scopes e migrations
-                    com schema builder — tudo integrado.
-                </p>
-            </article>
-            </a>
-
-            <a href="{{ route('docs.show', ['slug' => '13-cli']) }}" class="feature-card-link">
-            <article class="feature-card">
-                <div class="feature-card__icon">🐞</div>
-                <h3>Spark Inspector</h3>
-                <p>
-                    Debugger nativo que rastreia pipelines completos de request, cache, queue e AI,
-                    com queries, memoria, logs, tokens, custo e bottlenecks — configuravel via <code>.env</code>.
-                </p>
-            </article>
-            </a>
-
-            <a href="{{ route('docs.show', ['slug' => '10-events-jobs']) }}" class="feature-card-link">
-            <article class="feature-card">
-                <div class="feature-card__icon">📬</div>
-                <h3>Mail & Jobs</h3>
-                <p>
-                    Mailer SMTP embutido com API fluente. Despache jobs com <code>dispatch()</code>
-                    e opere filas com retry, inspect e worker via <code>queue:work</code>.
-                </p>
-            </article>
-            </a>
-
-            <a href="{{ route('docs.show', ['slug' => '18-search']) }}" class="feature-card-link">
-            <article class="feature-card">
-                <div class="feature-card__icon">🤖</div>
-                <h3>AI Unificada</h3>
-                <p>
-                    Uma unica entrada com <code>ai()</code> para texto, embeddings, imagem, audio,
-                    agentes e retrieval, ligada ao banco com vector search, RAG curto e observabilidade no Inspector.
-                </p>
-            </article>
-            </a>
-        </div>
-    </section>
-
-    <section class="section">
-        <div class="section-head">
-            <h2>Mais do CORE</h2>
-            <p>Além da DX da landing, o SparkPHP já cobre fluxo de desenvolvimento e operação.</p>
-        </div>
-
-        <div class="capability-grid">
-            <a href="{{ route('docs.show', ['slug' => '13-cli']) }}" class="capability-card-link">
-            <article class="capability-card">
-                <strong>CLI útil de verdade</strong>
-                <p>Servidor local versionado, <code>spark starter:list</code>, <code>spark new --starter=...</code>, <code>spark upgrade</code>, generators, diagnosticos e benchmarks reais.</p>
-                <code>php spark new ../meu-app --starter=saas</code>
-            </article>
-            </a>
-
-            <a href="{{ route('docs.show', ['slug' => '05-database']) }}" class="capability-card-link">
-            <article class="capability-card">
-                <strong>Migrations sem atrito</strong>
-                <p>Schema builder fluente com suporte a migrate, rollback, fresh e status. Seeds com <code>DatabaseSeeder</code>.</p>
-                <code>php spark migrate --seed</code>
-            </article>
-            </a>
-
-            <a href="{{ route('docs.show', ['slug' => '09-session-cache']) }}" class="capability-card-link">
-            <article class="capability-card">
-                <strong>Cache e optimize</strong>
-                <p>Cache com <code>touch()</code>, tags, stale-while-revalidate e telemetria no Inspector, alem de optimize para deploy.</p>
-                <code>php spark optimize</code>
-            </article>
-            </a>
-
-            <a href="{{ route('docs.show', ['slug' => '10-events-jobs']) }}" class="capability-card-link">
-            <article class="capability-card">
-                <strong>Jobs e eventos</strong>
-                <p>Despache trabalho assíncrono com <code>dispatch()</code>, use <code>app/jobs/_queue.php</code> para rotas por job e opere tudo via CLI — file-based, sem registro.</p>
-                <code>php spark queue:work</code>
-            </article>
-            </a>
-
-            <a href="{{ route('docs.show', ['slug' => '08-authentication']) }}" class="capability-card-link">
-            <article class="capability-card">
-                <strong>Auth pronto</strong>
-                <p>Autenticação via sessão com <code>auth()</code>, <code>login()</code>, <code>logout()</code>. Guards por rota e diretivas de role nas views.</p>
-                <code>auth()->name</code>
-            </article>
-            </a>
-
-            <a href="{{ route('docs.show', ['slug' => '09-session-cache']) }}" class="capability-card-link">
-            <article class="capability-card">
-                <strong>Session e Flash</strong>
-                <p>Sessão com helpers simples, flash messages de uma requisição e proteção CSRF automática.<br></p>
-                <code>flash('success', 'Salvo!')</code>
-            </article>
-            </a>
-
-            <a href="{{ route('docs.show', ['slug' => '12-helpers']) }}" class="capability-card-link">
-            <article class="capability-card">
-                <strong>Helpers globais</strong>
-                <p>Dezenas de funções globais — input, response, cache, segurança, debug — sem imports, disponíveis em todo lugar.</p>
-                <code>dd() / dump() / uuid()</code>
-            </article>
-            </a>
-
-            <a href="{{ route('docs.show', ['slug' => '12-helpers']) }}" class="capability-card-link">
-            <article class="capability-card">
-                <strong>Logging estruturado</strong>
-                <p>Logs por nível em <code>storage/logs/</code> com rotação diária. Nível mínimo controlado via <code>.env</code>.</p>
-                <code>log_info('msg', $ctx)</code>
-            </article>
-            </a>
-
-            <a href="{{ route('docs.show', ['slug' => '18-search']) }}" class="capability-card-link">
-            <article class="capability-card">
-                <strong>AI sem fragmentação</strong>
-                <p>Use <code>ai()</code> com retrieval, vector search no banco, contexto pronto para RAG e traces nativos com tokens e custo.</p>
-                <code>ai()->retrieve('...')->from('documents')</code>
-            </article>
-            </a>
-        </div>
-    </section>
-
-    <section class="section">
-        <div class="section-head">
-            <h2>Produto, não só runtime</h2>
-            <p>O Spark também publica posição, benchmark, adoção e migração de forma explícita, para a escolha da stack ser técnica e honesta.</p>
-        </div>
-
-        <div class="capability-grid">
-            <a href="{{ route('docs.show', ['slug' => '21-spark-vs-laravel']) }}" class="capability-card-link">
-            <article class="capability-card">
-                <strong>Comparativo honesto</strong>
-                <p>Sem feature parity cega. Onde o Laravel ainda ganha, onde o Spark quer ganhar e quando cada um faz mais sentido.</p>
-                <code>docs/21-spark-vs-laravel.md</code>
-            </article>
-            </a>
-
-            <a href="{{ route('docs.show', ['slug' => '22-adoption-guide']) }}" class="capability-card-link">
-            <article class="capability-card">
-                <strong>Adoção guiada</strong>
-                <p>Critérios práticos para piloto, escolha de starter, governança de time e validação de risco antes da adoção.</p>
-                <code>docs/22-adoption-guide.md</code>
-            </article>
-            </a>
-
-            <a href="{{ route('docs.show', ['slug' => '23-benchmarking']) }}" class="capability-card-link">
-            <article class="capability-card">
-                <strong>Benchmark responsável</strong>
-                <p>Como comparar Spark e Laravel com o mesmo workload, o mesmo ambiente e perguntas de engenharia que realmente importam.</p>
-                <code>php spark benchmark</code>
-            </article>
-            </a>
-
-            <a href="{{ route('docs.show', ['slug' => '24-migrating-from-laravel']) }}" class="capability-card-link">
-            <article class="capability-card">
-                <strong>Migração com critério</strong>
-                <p>Quando migrar, quando não migrar e como usar Spark em APIs, painéis e serviços novos sem reescrever no susto.</p>
-                <code>docs/24-migrating-from-laravel.md</code>
-            </article>
-            </a>
-
-            <a href="{{ route('docs.show', ['slug' => '25-review-checklist']) }}" class="capability-card-link">
-            <article class="capability-card">
-                <strong>Gate de review</strong>
-                <p>Checklist oficial para PRs: a mudanca precisa deixar o Spark mais curto, mais claro ou mais observavel do que a alternativa.</p>
-                <code>docs/25-review-checklist.md</code>
-            </article>
-            </a>
-        </div>
-    </section>
-
-    <section class="section showcase" id="start">
-        <div class="section-head" id="showcase">
-            <h2>Elegância no <code>CÓDIGO</code></h2>
-            <p>Uma API expressiva que parece natural, tanto no dark quanto no light theme.</p>
-        </div>
-
-        <div class="code-window">
-            <div class="code-window__bar">
-                <div class="code-window__dots">
+        <div class="hero__terminal">
+            <div class="terminal__bar">
+                <div class="terminal__dots">
                     <span></span>
                     <span></span>
                     <span></span>
                 </div>
-
-                <span class="code-window__file">users.[id].php</span>
+                <span class="terminal__label">exemplos.php</span>
             </div>
 
             <pre><?php echo <<<'HTML'
-<span class="code-line-comment">// app/routes/api/users.[id].php</span>
+<span class="line-comment">// app/routes/hello.php</span>
+<span class="line-keyword">get</span>(<span class="line-fn">fn</span>() => [<span class="line-string">'message'</span> => <span class="line-string">'Hello, SparkPHP!'</span>]);
 
-<span class="code-line-keyword">get</span>(fn(int $id) => User::find($id));
-
-<span class="code-line-keyword">put</span>(fn(int $id) => User::findOrFail($id)->update(input()));
-
-<span class="code-line-keyword">delete</span>(fn(int $id) => User::findOrFail($id)->delete());
+<span class="line-comment">// app/routes/users.[id].php</span>
+<span class="line-keyword">get</span>(<span class="line-fn">fn</span>(<span class="line-var">User $user</span>) => <span class="line-var">$user</span>);
+<span class="line-keyword">put</span>(<span class="line-fn">fn</span>(<span class="line-var">User $user</span>) => <span class="line-var">$user</span>-><span class="line-fn">update</span>(<span class="line-fn">input</span>()));
+<span class="line-keyword">delete</span>(<span class="line-fn">fn</span>(<span class="line-var">User $user</span>) => <span class="line-var">$user</span>-><span class="line-fn">delete</span>());
 HTML; ?></pre>
         </div>
+    </section>
 
-        @dev
-        <div class="dev-strip">
-            <div class="dev-strip__group">
-                <span class="dev-strip__dot"></span>
-                <strong>Dev mode</strong>
-                <span class="dev-strip__sep"></span>
-                <span>Spark {{ spark_version() }}</span>
-                <span class="dev-strip__sep"></span>
-                <span>PHP {{ phpversion() }}</span>
-                <span class="dev-strip__sep"></span>
-                <span>DB: {{ env('DB', 'sqlite') }}</span>
-            </div>
+    <!-- ── Tese do produto ── -->
+    <section class="section" id="features">
+        <div class="section-head">
+            <span class="section-tag">Por que SparkPHP</span>
+            <h2>O eixo certo para avaliar o SparkPHP</h2>
+            <p>
+                Avalie pelo que realmente importa: simplicidade real, previsibilidade e
+                visibilidade do que acontece no runtime.
+            </p>
+        </div>
 
-            <div class="dev-strip__actions">
-                <a href="/_spark">Inspector</a>
-                <span class="dev-strip__sep"></span>
-                <a href="/?_spark_routes=1">Rotas</a>
-                <span class="dev-strip__sep"></span>
-                <a href="{{ route('docs.index') }}">Docs</a>
+        <div class="pillar-grid">
+            <article class="card">
+                <span class="card__tag">Simplicidade</span>
+                <h3>Menos cola entre as partes</h3>
+                <p>
+                    Cada rota é um arquivo. Nenhum registro manual no kernel,
+                    zero controller abstrato. O design minimiza camadas entre
+                    o request e a resposta.
+                </p>
+            </article>
+
+            <article class="card">
+                <span class="card__tag">Previsibilidade</span>
+                <h3>Poucas regras, repetidas do mesmo jeito</h3>
+                <p>
+                    Mesma assinatura para rotas, middlewares, validação. Aprenda
+                    uma convenção e ela se aplica a tudo. Sem surpresas na
+                    arquitetura.
+                </p>
+            </article>
+
+            <article class="card">
+                <span class="card__tag">Observabilidade</span>
+                <h3>Produto visível desde o primeiro dia</h3>
+                <p>
+                    O runtime não esconde nada. Sem autoloading mágico, sem
+                    resolução implícita. Cada etapa do request fica clara na
+                    stack trace.
+                </p>
+            </article>
+        </div>
+    </section>
+
+    <!-- ── Cobertura ── -->
+    <section class="section">
+        <div class="section-head">
+            <span class="section-tag">Cobertura</span>
+            <h2>Cobertura forte sem virar feature parity cega</h2>
+        </div>
+
+        <div class="capability-grid">
+            <a href="{{ route('docs.show', ['slug' => '02-routing']) }}" class="card">
+                <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12.5 8 15l2 2.5"></path><path d="m14 12.5 2 2.5-2 2.5"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"></path></svg></span>
+                <span class="card__tag">Core</span>
+                <h3>File-based por default</h3>
+                <p>Cada rota é um arquivo PHP simples, sem registro manual.</p>
+            </a>
+
+            <a href="{{ route('docs.show', ['slug' => '04-views']) }}" class="card">
+                <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M3 9h18"></path><path d="M9 21V9"></path></svg></span>
+                <span class="card__tag">Views</span>
+                <h3>Templates</h3>
+                <p>Pure PHP templates com slots, layouts e componentes reutilizáveis.</p>
+            </a>
+
+            <a href="{{ route('docs.show', ['slug' => '05-database']) }}" class="card">
+                <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M3 5V19A9 3 0 0 0 21 19V5"></path><path d="M3 12A9 3 0 0 0 21 12"></path></svg></span>
+                <span class="card__tag">Database</span>
+                <h3>QueryBuilder, models e migrations</h3>
+                <p>Modelo ativo com query builder fluente e migrations integradas.</p>
+            </a>
+
+            <a href="{{ route('docs.show', ['slug' => '06-validation']) }}" class="card">
+                <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path><path d="m9 12 2 2 4-4"></path></svg></span>
+                <span class="card__tag">Segurança</span>
+                <h3>Validação e middleware com menos ruído</h3>
+                <p>Sem closures, middlewares são scripts, eventos são explícitos.</p>
+            </a>
+
+            <a href="{{ route('docs.show', ['slug' => '13-cli']) }}" class="card">
+                <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" x2="20" y1="19" y2="19"></line></svg></span>
+                <span class="card__tag">Tooling</span>
+                <h3>CLI útil e inspetor first-party</h3>
+                <p>Comandos CLI para criar rotas, controllers e inspecionar a app.</p>
+            </a>
+
+            <a href="{{ route('docs.show', ['slug' => '16-ai']) }}" class="card">
+                <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"></path><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"></path><path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4"></path><path d="M17.599 6.5a3 3 0 0 0 .399-1.375"></path><path d="M6.003 5.125A3 3 0 0 0 6.401 6.5"></path><path d="M3.477 10.896a4 4 0 0 1 .585-.396"></path><path d="M19.938 10.5a4 4 0 0 1 .585.396"></path><path d="M6 18a4 4 0 0 1-1.967-.516"></path><path d="M19.967 17.484A4 4 0 0 1 18 18"></path></svg></span>
+                <span class="card__tag">AI SDK</span>
+                <h3>Texto, embeddings, imagem, áudio e retrieval</h3>
+                <p>API unificada para texto, embeddings e file-based structured output.</p>
+            </a>
+        </div>
+    </section>
+
+    <!-- ── Runtime ── -->
+    <section class="section" id="showcase">
+        <div class="section-head">
+            <span class="section-tag">Runtime</span>
+            <h2>Uma rota, uma assinatura, um runtime claro</h2>
+        </div>
+
+        <div class="showcase-grid">
+            <div class="code-window">
+                <div class="code-window__bar">
+                    <div class="code-window__dots">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                    <span class="code-window__file">users.[id].php</span>
+                </div>
+
+                <pre><?php echo <<<'HTML'
+<span class="line-comment">// app/routes/users.[id].php</span>
+<span class="line-keyword">get</span>(<span class="line-fn">fn</span>(<span class="line-var">User $user</span>) => <span class="line-var">$user</span>);
+
+<span class="line-comment">// O sistema de arquivos faz parte da API</span>
+<span class="line-comment">// Sem rotas extras para definir: file = rota</span>
+
+<span class="line-comment">// Retorno IS para quêrir browser o API</span>
+<span class="line-comment">// Uma rota atende JSON, HTML ou Spark View</span>
+<span class="line-comment">// com base no accept header automaticamente</span>
+HTML; ?></pre>
             </div>
         </div>
-        @enddev
     </section>
+
+    <!-- ── Starters ── -->
+    <section class="section" id="start">
+        <div class="section-head">
+            <span class="section-tag">Starters</span>
+            <h2>Encurte o primeiro commit</h2>
+            <p>
+                Comece com templates prontos e foque no que importa desde o dia 1.
+            </p>
+        </div>
+
+        <div class="starter-grid">
+            <a href="{{ route('docs.show', ['slug' => '20-starter-kits']) }}" class="card">
+                <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path><path d="M10 12a1 1 0 0 0-1 1v1a1 1 0 0 1-1 1 1 1 0 0 1 1 1v1a1 1 0 0 0 1 1"></path><path d="M14 18a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1 1 1 0 0 1-1-1v-1a1 1 0 0 0-1-1"></path></svg></span>
+                <h3>JSON-Rest e OpenAPI</h3>
+                <p>Saia direto com API REST completa, docs em OpenAPI e schema gerada automaticamente.</p>
+            </a>
+
+            <a href="{{ route('docs.show', ['slug' => '20-starter-kits']) }}" class="card">
+                <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path><path d="M2 12h20"></path></svg></span>
+                <h3>Produto B2B com landing</h3>
+                <p>Entregue um site de marketing e uma dashboard com auth e billing integrados.</p>
+            </a>
+
+            <a href="{{ route('docs.show', ['slug' => '20-starter-kits']) }}" class="card">
+                <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"></path><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"></path></svg></span>
+                <h3>Documentação e operação interna</h3>
+                <p>Sua base para intranets, documentação interna e operações estruturadas da empresa.</p>
+            </a>
+
+            <a href="{{ route('docs.show', ['slug' => '20-starter-kits']) }}" class="card">
+                <span class="card__icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path><path d="M10 9H8"></path><path d="M16 13H8"></path><path d="M16 17H8"></path></svg></span>
+                <h3>Portal Markdown portfólio</h3>
+                <p>Tudo o que você precisa para um site com Markdown renderizado e SEO perfeito.</p>
+            </a>
+        </div>
+    </section>
+
+    <!-- ── CTA ── -->
+    <section class="section">
+        <div class="cta-section">
+            <div class="cta-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg>
+            </div>
+            <h2>Escolha Spark quando o ganho é estrutural</h2>
+            <p>
+                Se o que você quer é previsibilidade, performance real e menos
+                dependências — SparkPHP é a escolha certa.
+            </p>
+            <a href="{{ route('docs.show', ['slug' => '01-installation']) }}" class="site-button site-button--primary">Começar agora &rarr;</a>
+        </div>
+    </section>
+
+    @dev
+    <div class="dev-strip">
+        <div class="dev-strip__group">
+            <span class="dev-strip__dot"></span>
+            <strong>Dev mode</strong>
+            <span class="dev-strip__sep"></span>
+            <span>{{ $framework }} {{ $version }}</span>
+            <span class="dev-strip__sep"></span>
+            <span>{{ $release }}</span>
+            <span class="dev-strip__sep"></span>
+            <span>PHP {{ $php }}</span>
+            <span class="dev-strip__sep"></span>
+            <span>DB: {{ env('DB', 'sqlite') }}</span>
+        </div>
+
+        <div class="dev-strip__actions">
+            <a href="/_spark">Inspector</a>
+            <span class="dev-strip__sep"></span>
+            <a href="/?_spark_routes=1">Rotas</a>
+            <span class="dev-strip__sep"></span>
+            <a href="{{ route('docs.show', ['slug' => '23-benchmarking']) }}">Benchmarks</a>
+            <span class="dev-strip__sep"></span>
+            <a href="{{ route('docs.index') }}">Docs</a>
+        </div>
+    </div>
+    @enddev
 </div>

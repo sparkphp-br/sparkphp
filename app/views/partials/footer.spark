@@ -1,15 +1,15 @@
 <footer class="site-footer">
     <div class="site-footer__inner">
         <div class="site-footer__brand">
-            <span style="color:var(--brand);">⚡</span>
-            <span>{{ env('APP_NAME') }}</span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--brand);"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg>
+            <span>Spark<span style="color:var(--brand);">PHP</span></span>
             <span style="color:var(--text-muted);">Write what matters.</span>
         </div>
 
         <nav class="site-footer__links" aria-label="Rodapé">
             <a href="https://github.com/dbsdenis/sparkphp" target="_blank" rel="noreferrer">GitHub</a>
-            <a href="/#features">Docs</a>
-            <a href="/#showcase">Comunidade</a>
+            <a href="{{ route('docs.index') }}">Docs</a>
+            <a href="/exemplos">Comunidade</a>
         </nav>
     </div>
 </footer>

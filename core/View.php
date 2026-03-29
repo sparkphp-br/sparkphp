@@ -306,8 +306,16 @@ class View
         $source = str_replace('@endlast', '<?php endif; ?>', $source);
 
         // @if / @elseif / @else / @endif
-        $source = preg_replace('/@if\((.+?)\)/', '<?php if ($1): ?>', $source);
-        $source = preg_replace('/@elseif\((.+?)\)/', '<?php elseif ($1): ?>', $source);
+        $source = $this->compileBalancedDirective(
+            $source,
+            'if',
+            fn(string $expression) => "<?php if ({$expression}): ?>"
+        );
+        $source = $this->compileBalancedDirective(
+            $source,
+            'elseif',
+            fn(string $expression) => "<?php elseif ({$expression}): ?>"
+        );
         $source = preg_replace_callback('/@else(?!\w)/', fn() => '<?php else: ?>', $source);
         $source = str_replace('@endif', '<?php endif; ?>', $source);
 
@@ -461,6 +469,80 @@ class View
         );
 
         return $source;
+    }
+
+    private function compileBalancedDirective(string $source, string $directive, callable $compiler): string
+    {
+        $needle = '@' . $directive . '(';
+        $result = '';
+        $offset = 0;
+
+        while (($start = strpos($source, $needle, $offset)) !== false) {
+            $open = $start + strlen($needle) - 1;
+            $close = $this->findMatchingParenthesis($source, $open);
+
+            if ($close === null) {
+                break;
+            }
+
+            $expression = substr($source, $open + 1, $close - $open - 1);
+
+            $result .= substr($source, $offset, $start - $offset);
+            $result .= $compiler($expression);
+            $offset = $close + 1;
+        }
+
+        return $result . substr($source, $offset);
+    }
+
+    private function findMatchingParenthesis(string $source, int $openOffset): ?int
+    {
+        $depth   = 0;
+        $quote   = null;
+        $escaped = false;
+        $length  = strlen($source);
+
+        for ($i = $openOffset; $i < $length; $i++) {
+            $char = $source[$i];
+
+            if ($quote !== null) {
+                if ($escaped) {
+                    $escaped = false;
+                    continue;
+                }
+
+                if ($char === '\\') {
+                    $escaped = true;
+                    continue;
+                }
+
+                if ($char === $quote) {
+                    $quote = null;
+                }
+
+                continue;
+            }
+
+            if ($char === '"' || $char === "'") {
+                $quote = $char;
+                continue;
+            }
+
+            if ($char === '(') {
+                $depth++;
+                continue;
+            }
+
+            if ($char === ')') {
+                $depth--;
+
+                if ($depth === 0) {
+                    return $i;
+                }
+            }
+        }
+
+        return null;
     }
 
     // ─────────────────────────────────────────────

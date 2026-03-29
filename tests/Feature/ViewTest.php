@@ -83,6 +83,26 @@ SPARK
         $this->assertSame('Users Spark', $html);
     }
 
+    public function testIfDirectiveSupportsNestedParenthesesInCondition(): void
+    {
+        file_put_contents($this->basePath . '/app/views/index.spark', <<<'SPARK'
+@if(!empty($items))
+Visible
+@else
+Hidden
+@endif
+SPARK
+        );
+
+        $view = new View($this->basePath);
+
+        $visible = trim($view->render('index', ['items' => ['Spark']]));
+        $hidden = trim($view->render('index', ['items' => []]));
+
+        $this->assertSame('Visible', $visible);
+        $this->assertSame('Hidden', $hidden);
+    }
+
     private function deleteDirectory(string $path): void
     {
         if (!is_dir($path)) {

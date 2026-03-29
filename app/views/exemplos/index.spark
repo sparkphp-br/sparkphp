@@ -1,0 +1,661 @@
+@title('Exemplos — SparkPHP')
+@bodyClass('exemplos-page')
+
+<style>
+    .exemplos-page main {
+        overflow: hidden;
+    }
+
+    .exemplos-shell {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem 1.5rem 5rem;
+    }
+
+    .exemplos-hero {
+        text-align: center;
+        padding: 3rem 0 3.5rem;
+    }
+
+    .exemplos-hero .section-tag {
+        display: inline-block;
+        color: var(--brand);
+        font-size: .8rem;
+        font-weight: 700;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+        margin-bottom: .75rem;
+    }
+
+    .exemplos-hero h1 {
+        font-size: clamp(2.5rem, 6vw, 4rem);
+        letter-spacing: -.05em;
+        margin: 0;
+    }
+
+    .exemplos-hero p {
+        margin: 1rem auto 0;
+        max-width: 34rem;
+        color: var(--text-secondary);
+        font-size: 1.1rem;
+        line-height: 1.6;
+    }
+
+    /* ── Layout ── */
+    .exemplos-layout {
+        display: grid;
+        grid-template-columns: 300px 1fr;
+        gap: 2.5rem;
+        align-items: start;
+    }
+
+    /* ── Sidebar ── */
+    .exemplos-sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: .35rem;
+        position: sticky;
+        top: 5rem;
+    }
+
+    .exemplos-tab {
+        display: flex;
+        align-items: center;
+        gap: .75rem;
+        padding: .85rem 1.1rem;
+        border-radius: .85rem;
+        border: none;
+        background: transparent;
+        color: var(--text-secondary);
+        font-size: 1rem;
+        font-weight: 500;
+        text-align: left;
+        cursor: pointer;
+        transition: background .2s ease, color .2s ease;
+        font-family: inherit;
+    }
+
+    .exemplos-tab:hover {
+        background: var(--surface-1);
+        color: var(--text-primary);
+    }
+
+    .exemplos-tab.active {
+        background: linear-gradient(135deg, var(--brand), var(--brand-strong));
+        color: var(--button-text);
+    }
+
+    .exemplos-tab__chevron {
+        font-size: .75rem;
+        transition: transform .2s ease;
+    }
+
+    .exemplos-tab.active .exemplos-tab__chevron {
+        transform: rotate(90deg);
+    }
+
+    .exemplos-tab__info {
+        flex: 1;
+    }
+
+    .exemplos-tab__title {
+        display: block;
+        font-weight: 600;
+    }
+
+    .exemplos-tab__tag {
+        display: block;
+        font-size: .72rem;
+        font-weight: 700;
+        letter-spacing: .06em;
+        text-transform: uppercase;
+        margin-top: .15rem;
+        opacity: .7;
+    }
+
+    .exemplos-tab.active .exemplos-tab__tag {
+        opacity: .85;
+    }
+
+    /* ── Content ── */
+    .exemplos-content {
+        min-width: 0;
+    }
+
+    .exemplo-panel {
+        display: none;
+    }
+
+    .exemplo-panel.active {
+        display: block;
+    }
+
+    .exemplo-panel h2 {
+        margin: 0 0 .5rem;
+        font-size: 1.75rem;
+        letter-spacing: -.03em;
+    }
+
+    .exemplo-panel > p {
+        margin: 0 0 1.5rem;
+        color: var(--text-secondary);
+        font-size: 1.05rem;
+        line-height: 1.6;
+    }
+
+    /* ── Code Window ── */
+    .ex-code-window {
+        border-radius: 1rem;
+        overflow: hidden;
+        border: 1px solid var(--border-soft);
+        background: #1a1a2e;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+        margin-bottom: 1.5rem;
+    }
+
+    :root[data-theme='light'] .ex-code-window {
+        background: #1e1e2e;
+    }
+
+    .ex-code-window__bar {
+        display: flex;
+        align-items: center;
+        gap: .6rem;
+        padding: .85rem 1.1rem;
+        background: rgba(255, 255, 255, 0.04);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .ex-code-window__dots {
+        display: flex;
+        gap: .4rem;
+    }
+
+    .ex-code-window__dots span {
+        width: .7rem;
+        height: .7rem;
+        border-radius: 50%;
+    }
+
+    .ex-code-window__dots span:nth-child(1) { background: #ff5f57; }
+    .ex-code-window__dots span:nth-child(2) { background: #febc2e; }
+    .ex-code-window__dots span:nth-child(3) { background: #28c840; }
+
+    .ex-code-window__label {
+        color: rgba(255, 255, 255, 0.4);
+        font-size: .82rem;
+    }
+
+    .ex-code-window__copy {
+        margin-left: auto;
+        display: inline-flex;
+        align-items: center;
+        gap: .35rem;
+        padding: .3rem .6rem;
+        border-radius: .5rem;
+        border: none;
+        background: transparent;
+        color: rgba(255, 255, 255, 0.35);
+        font-size: .78rem;
+        cursor: pointer;
+        font-family: inherit;
+        transition: color .2s ease;
+    }
+
+    .ex-code-window__copy:hover {
+        color: rgba(255, 255, 255, 0.7);
+    }
+
+    .ex-code-window pre {
+        margin: 0;
+        padding: 1.4rem 1.5rem;
+        color: #e2e8f0;
+        font-size: .88rem;
+        line-height: 2;
+        overflow-x: auto;
+    }
+
+    .ex-code-window .line-comment { color: #6b7394; }
+    .ex-code-window .line-keyword { color: var(--brand); font-weight: 700; }
+    .ex-code-window .line-fn { color: #7dd3fc; }
+    .ex-code-window .line-string { color: #86efac; }
+    .ex-code-window .line-var { color: #c4b5fd; }
+    .ex-code-window .line-tag { color: #f472b6; }
+    .ex-code-window .line-attr { color: #fbbf24; }
+
+    /* ── Output button ── */
+    .ex-output-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: .5rem;
+        padding: .7rem 1.4rem;
+        border-radius: .85rem;
+        border: none;
+        background: linear-gradient(135deg, var(--brand), var(--brand-strong));
+        color: var(--button-text);
+        font-size: .95rem;
+        font-weight: 600;
+        cursor: pointer;
+        font-family: inherit;
+        transition: opacity .2s ease, transform .2s ease;
+    }
+
+    .ex-output-btn:hover {
+        opacity: .9;
+        transform: translateY(-1px);
+    }
+
+    .ex-output-btn svg {
+        width: 1rem;
+        height: 1rem;
+    }
+
+    /* ── Output panel ── */
+    .ex-output {
+        display: none;
+        margin-top: 1rem;
+        padding: 1.25rem;
+        border-radius: 1rem;
+        border: 1px solid var(--border-soft);
+        background: var(--surface-1);
+        font-family: "JetBrains Mono", "Fira Code", monospace;
+        font-size: .85rem;
+        line-height: 1.8;
+        color: var(--text-secondary);
+        white-space: pre-wrap;
+    }
+
+    :root[data-theme='light'] .ex-output {
+        background: rgba(255, 255, 255, 0.84);
+    }
+
+    .ex-output.visible {
+        display: block;
+    }
+
+    .ex-output strong {
+        color: var(--text-primary);
+    }
+
+    .ex-output .output-status {
+        color: var(--brand);
+        font-weight: 700;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 820px) {
+        .exemplos-shell {
+            padding: 1.25rem 1rem 4rem;
+        }
+
+        .exemplos-layout {
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+
+        .exemplos-sidebar {
+            flex-direction: row;
+            overflow-x: auto;
+            position: static;
+            gap: .5rem;
+            padding-bottom: .25rem;
+        }
+
+        .exemplos-tab {
+            white-space: nowrap;
+            padding: .65rem .9rem;
+            font-size: .9rem;
+        }
+
+        .exemplos-tab__tag {
+            display: none;
+        }
+    }
+</style>
+
+<div class="exemplos-shell">
+    <section class="exemplos-hero">
+        <span class="section-tag">Exemplos</span>
+        <h1>Veja na prática</h1>
+        <p>Exemplos interativos de código SparkPHP — clique para explorar, copie para usar.</p>
+    </section>
+
+    <div class="exemplos-layout">
+        <div class="exemplos-sidebar" role="tablist">
+            <button class="exemplos-tab active" data-tab="hello" role="tab" aria-selected="true">
+                <span class="exemplos-tab__chevron">&#9656;</span>
+                <span class="exemplos-tab__info">
+                    <span class="exemplos-tab__title">Hello World</span>
+                    <span class="exemplos-tab__tag">Básico</span>
+                </span>
+            </button>
+
+            <button class="exemplos-tab" data-tab="crud" role="tab" aria-selected="false">
+                <span class="exemplos-tab__chevron">&#9656;</span>
+                <span class="exemplos-tab__info">
+                    <span class="exemplos-tab__title">CRUD completo</span>
+                    <span class="exemplos-tab__tag">Rotas</span>
+                </span>
+            </button>
+
+            <button class="exemplos-tab" data-tab="middleware" role="tab" aria-selected="false">
+                <span class="exemplos-tab__chevron">&#9656;</span>
+                <span class="exemplos-tab__info">
+                    <span class="exemplos-tab__title">Middleware por arquivo</span>
+                    <span class="exemplos-tab__tag">Middleware</span>
+                </span>
+            </button>
+
+            <button class="exemplos-tab" data-tab="validation" role="tab" aria-selected="false">
+                <span class="exemplos-tab__chevron">&#9656;</span>
+                <span class="exemplos-tab__info">
+                    <span class="exemplos-tab__title">Validação integrada</span>
+                    <span class="exemplos-tab__tag">Validação</span>
+                </span>
+            </button>
+
+            <button class="exemplos-tab" data-tab="views" role="tab" aria-selected="false">
+                <span class="exemplos-tab__chevron">&#9656;</span>
+                <span class="exemplos-tab__info">
+                    <span class="exemplos-tab__title">Spark Templates</span>
+                    <span class="exemplos-tab__tag">Views</span>
+                </span>
+            </button>
+
+            <button class="exemplos-tab" data-tab="ai" role="tab" aria-selected="false">
+                <span class="exemplos-tab__chevron">&#9656;</span>
+                <span class="exemplos-tab__info">
+                    <span class="exemplos-tab__title">AI SDK</span>
+                    <span class="exemplos-tab__tag">AI</span>
+                </span>
+            </button>
+        </div>
+
+        <div class="exemplos-content">
+            <!-- Hello World -->
+            <div class="exemplo-panel active" data-panel="hello" role="tabpanel">
+                <h2>Hello World</h2>
+                <p>A rota mais simples possível — um arquivo, uma função, JSON na resposta.</p>
+
+                <div class="ex-code-window">
+                    <div class="ex-code-window__bar">
+                        <div class="ex-code-window__dots"><span></span><span></span><span></span></div>
+                        <span class="ex-code-window__label">código</span>
+                        <button class="ex-code-window__copy" onclick="copyCode(this)">&#128203; Copiar</button>
+                    </div>
+                    <pre><?php echo <<<'HTML'
+<span class="line-comment">// app/routes/hello.php</span>
+
+<span class="line-keyword">get</span>(<span class="line-fn">fn</span>() => [<span class="line-string">'message'</span> => <span class="line-string">'Hello, SparkPHP!'</span>]);
+
+<span class="line-comment">// Acesse: GET /hello</span>
+<span class="line-comment">// Retorna: {"message": "Hello, SparkPHP!"}</span>
+HTML; ?></pre>
+                </div>
+
+                <button class="ex-output-btn" onclick="toggleOutput(this)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                    Ver output
+                </button>
+
+                <div class="ex-output">
+<span class="output-status">HTTP/1.1 200 OK</span>
+Content-Type: application/json
+
+{
+  <strong>"message"</strong>: "Hello, SparkPHP!"
+}</div>
+            </div>
+
+            <!-- CRUD -->
+            <div class="exemplo-panel" data-panel="crud" role="tabpanel">
+                <h2>CRUD completo</h2>
+                <p>Defina GET, POST, PUT e DELETE no mesmo arquivo com tipagem automática.</p>
+
+                <div class="ex-code-window">
+                    <div class="ex-code-window__bar">
+                        <div class="ex-code-window__dots"><span></span><span></span><span></span></div>
+                        <span class="ex-code-window__label">código</span>
+                        <button class="ex-code-window__copy" onclick="copyCode(this)">&#128203; Copiar</button>
+                    </div>
+                    <pre><?php echo <<<'HTML'
+<span class="line-comment">// app/routes/users.[id].php</span>
+
+<span class="line-keyword">get</span>(<span class="line-fn">fn</span>(<span class="line-var">User $user</span>) => <span class="line-var">$user</span>);
+
+<span class="line-keyword">post</span>(<span class="line-fn">fn</span>() => <span class="line-var">User</span>::<span class="line-fn">create</span>(<span class="line-fn">input</span>()));
+
+<span class="line-keyword">put</span>(<span class="line-fn">fn</span>(<span class="line-var">User $user</span>) => <span class="line-var">$user</span>-><span class="line-fn">update</span>(<span class="line-fn">input</span>()));
+
+<span class="line-keyword">delete</span>(<span class="line-fn">fn</span>(<span class="line-var">User $user</span>) => <span class="line-var">$user</span>-><span class="line-fn">delete</span>());
+HTML; ?></pre>
+                </div>
+
+                <button class="ex-output-btn" onclick="toggleOutput(this)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                    Ver output
+                </button>
+
+                <div class="ex-output">
+<span class="output-status">// GET /users/42</span>
+{
+  <strong>"id"</strong>: 42,
+  <strong>"name"</strong>: "Maria Silva",
+  <strong>"email"</strong>: "maria@exemplo.com"
+}
+
+<span class="output-status">// POST /users → 201 Created</span>
+{
+  <strong>"id"</strong>: 5,
+  <strong>"name"</strong>: "João",
+  <strong>"email"</strong>: "joao@ex.com"
+}</div>
+            </div>
+
+            <!-- Middleware -->
+            <div class="exemplo-panel" data-panel="middleware" role="tabpanel">
+                <h2>Middleware por arquivo</h2>
+                <p>Crie um arquivo <code>_middleware.php</code> na pasta e ele se aplica a todas as rotas abaixo.</p>
+
+                <div class="ex-code-window">
+                    <div class="ex-code-window__bar">
+                        <div class="ex-code-window__dots"><span></span><span></span><span></span></div>
+                        <span class="ex-code-window__label">código</span>
+                        <button class="ex-code-window__copy" onclick="copyCode(this)">&#128203; Copiar</button>
+                    </div>
+                    <pre><?php echo <<<'HTML'
+<span class="line-comment">// app/routes/admin/_middleware.php</span>
+
+<span class="line-keyword">guard</span>(<span class="line-string">'auth'</span>);
+<span class="line-keyword">role</span>(<span class="line-string">'admin'</span>);
+
+<span class="line-comment">// Todas as rotas em /admin/* agora</span>
+<span class="line-comment">// exigem autenticação + role admin</span>
+<span class="line-comment">// Sem registro manual, sem kernel</span>
+HTML; ?></pre>
+                </div>
+
+                <button class="ex-output-btn" onclick="toggleOutput(this)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                    Ver output
+                </button>
+
+                <div class="ex-output">
+<span class="output-status">// GET /admin/dashboard (sem auth)</span>
+HTTP/1.1 401 Unauthorized
+→ Redirect: /login
+
+<span class="output-status">// GET /admin/dashboard (com auth + role admin)</span>
+HTTP/1.1 200 OK
+→ Dashboard carregado</div>
+            </div>
+
+            <!-- Validação -->
+            <div class="exemplo-panel" data-panel="validation" role="tabpanel">
+                <h2>Validação integrada</h2>
+                <p>Valide input com regras encadeadas. Erros voltam automaticamente para a view ou como JSON.</p>
+
+                <div class="ex-code-window">
+                    <div class="ex-code-window__bar">
+                        <div class="ex-code-window__dots"><span></span><span></span><span></span></div>
+                        <span class="ex-code-window__label">código</span>
+                        <button class="ex-code-window__copy" onclick="copyCode(this)">&#128203; Copiar</button>
+                    </div>
+                    <pre><?php echo <<<'HTML'
+<span class="line-comment">// app/routes/users.php</span>
+
+<span class="line-keyword">post</span>(<span class="line-fn">function</span> () {
+    <span class="line-var">$data</span> = <span class="line-keyword">validate</span>([
+        <span class="line-string">'name'</span>     => <span class="line-string">'required|min:3'</span>,
+        <span class="line-string">'email'</span>    => <span class="line-string">'required|email|unique:users'</span>,
+        <span class="line-string">'password'</span> => <span class="line-string">'required|min:8|confirmed'</span>,
+    ]);
+
+    <span class="line-var">$user</span> = <span class="line-var">User</span>::<span class="line-fn">create</span>(<span class="line-var">$data</span>);
+
+    <span class="line-keyword">return</span> <span class="line-fn">response</span>(<span class="line-var">$user</span>, 201);
+});
+HTML; ?></pre>
+                </div>
+
+                <button class="ex-output-btn" onclick="toggleOutput(this)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                    Ver output
+                </button>
+
+                <div class="ex-output">
+<span class="output-status">// Input inválido:</span>
+HTTP/1.1 422 Unprocessable Entity
+{
+  <strong>"errors"</strong>: {
+    "email": ["O email já está em uso."],
+    "password": ["Mínimo 8 caracteres."]
+  }
+}
+
+<span class="output-status">// Input válido:</span>
+HTTP/1.1 201 Created
+{ <strong>"id"</strong>: 5, <strong>"name"</strong>: "João", <strong>"email"</strong>: "joao@ex.com" }</div>
+            </div>
+
+            <!-- Spark Templates -->
+            <div class="exemplo-panel" data-panel="views" role="tabpanel">
+                <h2>Spark Templates</h2>
+                <p>Templates em PHP puro com layouts, slots e componentes — sem engine extra.</p>
+
+                <div class="ex-code-window">
+                    <div class="ex-code-window__bar">
+                        <div class="ex-code-window__dots"><span></span><span></span><span></span></div>
+                        <span class="ex-code-window__label">código</span>
+                        <button class="ex-code-window__copy" onclick="copyCode(this)">&#128203; Copiar</button>
+                    </div>
+                    <pre><?php echo <<<'HTML'
+<span class="line-comment">&lt;!-- app/views/hello.spark --&gt;</span>
+
+<span class="line-tag">@title</span>(<span class="line-string">'{{ $message }}'</span>)
+<span class="line-tag">@layout</span>(<span class="line-string">'main'</span>)
+
+<span class="line-tag">&lt;h1&gt;</span>{{ <span class="line-var">$message</span> }}<span class="line-tag">&lt;/h1&gt;</span>
+
+<span class="line-tag">@foreach</span>(<span class="line-var">$items</span> as <span class="line-var">$item</span>)
+    <span class="line-tag">&lt;article&gt;</span>
+        <span class="line-tag">&lt;h2&gt;</span>{{ <span class="line-var">$item</span>-><span class="line-attr">title</span> }}<span class="line-tag">&lt;/h2&gt;</span>
+        <span class="line-tag">&lt;p&gt;</span>{{ <span class="line-var">$item</span>-><span class="line-attr">body</span> }}<span class="line-tag">&lt;/p&gt;</span>
+    <span class="line-tag">&lt;/article&gt;</span>
+<span class="line-tag">@endforeach</span>
+HTML; ?></pre>
+                </div>
+
+                <button class="ex-output-btn" onclick="toggleOutput(this)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                    Ver output
+                </button>
+
+                <div class="ex-output">
+<span class="output-status">// HTML renderizado:</span>
+&lt;h1&gt;Bem-vindo&lt;/h1&gt;
+
+&lt;article&gt;
+  &lt;h2&gt;Primeiro post&lt;/h2&gt;
+  &lt;p&gt;Conteúdo do post...&lt;/p&gt;
+&lt;/article&gt;</div>
+            </div>
+
+            <!-- AI SDK -->
+            <div class="exemplo-panel" data-panel="ai" role="tabpanel">
+                <h2>AI SDK</h2>
+                <p>API unificada para texto, embeddings e file-based structured output.</p>
+
+                <div class="ex-code-window">
+                    <div class="ex-code-window__bar">
+                        <div class="ex-code-window__dots"><span></span><span></span><span></span></div>
+                        <span class="ex-code-window__label">código</span>
+                        <button class="ex-code-window__copy" onclick="copyCode(this)">&#128203; Copiar</button>
+                    </div>
+                    <pre><?php echo <<<'HTML'
+<span class="line-comment">// app/routes/api/summarize.php</span>
+
+<span class="line-keyword">post</span>(<span class="line-fn">function</span> () {
+    <span class="line-var">$text</span> = <span class="line-fn">input</span>(<span class="line-string">'text'</span>);
+
+    <span class="line-var">$summary</span> = <span class="line-keyword">ai</span>()
+        -><span class="line-fn">model</span>(<span class="line-string">'claude-sonnet'</span>)
+        -><span class="line-fn">prompt</span>(<span class="line-string">"Resuma: {$text}"</span>)
+        -><span class="line-fn">generate</span>();
+
+    <span class="line-keyword">return</span> [<span class="line-string">'summary'</span> => <span class="line-var">$summary</span>];
+});
+HTML; ?></pre>
+                </div>
+
+                <button class="ex-output-btn" onclick="toggleOutput(this)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                    Ver output
+                </button>
+
+                <div class="ex-output">
+<span class="output-status">// POST /api/summarize</span>
+{
+  <strong>"summary"</strong>: "O SparkPHP é um framework PHP file-based que prioriza simplicidade, previsibilidade e observabilidade..."
+}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@js('exemplos')
+
+<script>
+    function switchTab(tabId) {
+        document.querySelectorAll('.exemplos-tab').forEach(t => {
+            t.classList.toggle('active', t.dataset.tab === tabId);
+            t.setAttribute('aria-selected', t.dataset.tab === tabId ? 'true' : 'false');
+        });
+
+        document.querySelectorAll('.exemplo-panel').forEach(p => {
+            p.classList.toggle('active', p.dataset.panel === tabId);
+        });
+    }
+
+    document.querySelectorAll('.exemplos-tab').forEach(tab => {
+        tab.addEventListener('click', () => switchTab(tab.dataset.tab));
+    });
+
+    function toggleOutput(btn) {
+        const output = btn.nextElementSibling;
+        output.classList.toggle('visible');
+        btn.innerHTML = output.classList.contains('visible')
+            ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg> Esconder output'
+            : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> Ver output';
+    }
+
+    function copyCode(btn) {
+        const pre = btn.closest('.ex-code-window').querySelector('pre');
+        const text = pre.textContent;
+        navigator.clipboard.writeText(text).then(() => {
+            const original = btn.innerHTML;
+            btn.textContent = 'Copiado!';
+            setTimeout(() => { btn.innerHTML = original; }, 1500);
+        });
+    }
+</script>

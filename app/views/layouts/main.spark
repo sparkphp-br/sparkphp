@@ -144,19 +144,35 @@
         .site-brand {
             display: inline-flex;
             align-items: center;
-            gap: .7rem;
+            gap: .5rem;
             font-weight: 700;
             letter-spacing: -.03em;
+            transition: opacity .2s ease;
         }
 
-        .site-brand__mark {
+        .site-brand:hover {
+            opacity: .85;
+        }
+
+        .site-brand__icon {
+            width: 1.5rem;
+            height: 1.5rem;
             color: var(--brand);
-            font-size: 1rem;
+            transition: transform .2s ease;
+        }
+
+        .site-brand:hover .site-brand__icon {
+            transform: scale(1.1);
         }
 
         .site-brand__name {
+            font-size: 1.15rem;
+            letter-spacing: -.02em;
+            color: var(--text-primary);
+        }
+
+        .site-brand__accent {
             color: var(--brand);
-            font-size: 1.35rem;
         }
 
         .site-nav {
@@ -219,10 +235,13 @@
 
         .site-toggle {
             cursor: pointer;
+            min-width: 2.75rem;
+            padding: .72rem;
         }
 
         .site-toggle__icon {
-            font-size: .95rem;
+            font-size: 1rem;
+            line-height: 1;
         }
 
         .site-user {
