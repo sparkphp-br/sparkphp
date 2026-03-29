@@ -64,7 +64,7 @@ php spark <comando> [opcoes]
 | `php spark views:clear`     | Limpa cache de views compiladas           |
 | `php spark routes:cache`    | Gera cache de rotas                       |
 | `php spark routes:clear`    | Limpa cache de rotas                      |
-| `php spark routes:list`     | Lista todas as rotas com seus middlewares  |
+| `php spark routes:list`     | Lista rotas com a ordem efetiva dos middlewares |
 | `php spark optimize`        | Gera cache de rotas + views (para deploy) |
 
 ### Spark Inspector
@@ -126,6 +126,8 @@ php spark seed PostSeeder
 
 # Ver as rotas
 php spark routes:list
+
+# A saida inclui middlewares globais, por diretorio e inline
 
 # Verificar o banco
 php spark db:show

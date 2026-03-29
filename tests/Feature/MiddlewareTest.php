@@ -50,6 +50,34 @@ CODE
         $this->assertSame(401, $this->readPrivate($result, 'status'));
     }
 
+    public function testRunReturnsStringWhenMiddlewareBlocksWithHtmlContent(): void
+    {
+        $this->writeMiddleware('html_block', <<<'CODE'
+<?php
+return '<h1>blocked</h1>';
+CODE
+        );
+
+        $pipeline = new Middleware($this->basePath, ['html_block']);
+        $result = $pipeline->run();
+
+        $this->assertSame('<h1>blocked</h1>', $result);
+    }
+
+    public function testRunReturnsArrayWhenMiddlewareBlocksWithStructuredPayload(): void
+    {
+        $this->writeMiddleware('json_block', <<<'CODE'
+<?php
+return ['error' => 'blocked'];
+CODE
+        );
+
+        $pipeline = new Middleware($this->basePath, ['json_block']);
+        $result = $pipeline->run();
+
+        $this->assertSame(['error' => 'blocked'], $result);
+    }
+
     public function testRunSupportsRedirectHelperReturnContract(): void
     {
         $this->writeMiddleware('auth', <<<'CODE'

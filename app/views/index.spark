@@ -588,8 +588,8 @@
                 <div class="feature-card__icon">🛡️</div>
                 <h3>Middleware Simples</h3>
                 <p>
-                    Arquivo em <code>app/middleware/</code> = alias pronto. Aplique com <code>guard()</code>
-                    na rota ou por convencao em pastas como <code>[auth]</code> e <code>[auth+throttle]</code>.
+                    Arquivo em <code>app/middleware/</code> = alias pronto. Aplique com <code>guard()</code>,
+                    herde via <code>app/routes/_middleware.php</code> ou organize por pastas como <code>[auth]</code>.
                 </p>
             </article>
             </a>

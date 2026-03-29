@@ -2,6 +2,8 @@
 
 class Router
 {
+    private const DIRECTORY_MIDDLEWARE_FILE = '_middleware.php';
+
     /** @internal Used by global route helpers (get/post/etc.) */
     public static array $_collected = [];
     /** @internal Used by route helper chaining such as ->guard('auth') */
@@ -132,6 +134,7 @@ class Router
             return [];
         }
 
+        self::$namedRoutes = [];
         $routes = [];
         $this->scanDir($routesDir, $routesDir, [], $routes);
 
@@ -144,9 +147,18 @@ class Router
 
     private function scanDir(string $dir, string $base, array $middlewares, array &$routes): void
     {
+        $middlewares = $this->mergeMiddlewares(
+            $middlewares,
+            $this->loadDirectoryMiddlewareFile($dir)
+        );
+
         $entries = scandir($dir);
         foreach ($entries as $entry) {
             if ($entry === '.' || $entry === '..') {
+                continue;
+            }
+
+            if ($entry === self::DIRECTORY_MIDDLEWARE_FILE) {
                 continue;
             }
 
@@ -156,7 +168,7 @@ class Router
                 // Middleware folder: [auth] or [auth+throttle]
                 if (preg_match('/^\[(.+)]$/', $entry, $m)) {
                     $names = array_map('trim', explode('+', $m[1]));
-                    $this->scanDir($fullPath, $base, array_merge($middlewares, $names), $routes);
+                    $this->scanDir($fullPath, $base, $this->mergeMiddlewares($middlewares, $names), $routes);
                 } else {
                     $this->scanDir($fullPath, $base, $middlewares, $routes);
                 }
@@ -257,6 +269,79 @@ class Router
         }
 
         return [$segments, $paramNames, $hasParams];
+    }
+
+    private function loadDirectoryMiddlewareFile(string $dir): array
+    {
+        $file = $dir . '/' . self::DIRECTORY_MIDDLEWARE_FILE;
+        if (!is_file($file)) {
+            return [];
+        }
+
+        $middlewares = (static function () use ($file) {
+            return require $file;
+        })();
+
+        return $this->normalizeMiddlewareList($middlewares, $file);
+    }
+
+    private function normalizeMiddlewareList(mixed $middlewares, string $file): array
+    {
+        if ($middlewares === null) {
+            return [];
+        }
+
+        if (is_string($middlewares)) {
+            $middlewares = [$middlewares];
+        }
+
+        if (!is_array($middlewares)) {
+            throw new RuntimeException("Route middleware file [{$file}] must return a string, array, or null.");
+        }
+
+        $normalized = [];
+        $stack = array_values($middlewares);
+
+        while ($stack !== []) {
+            $item = array_shift($stack);
+
+            if ($item === null) {
+                continue;
+            }
+
+            if (is_array($item)) {
+                array_unshift($stack, ...array_values($item));
+                continue;
+            }
+
+            if (!is_string($item)) {
+                throw new RuntimeException("Route middleware file [{$file}] contains an invalid middleware entry.");
+            }
+
+            $item = trim($item);
+            if ($item === '') {
+                continue;
+            }
+
+            $normalized[] = $item;
+        }
+
+        return array_values(array_unique($normalized));
+    }
+
+    private function mergeMiddlewares(array ...$groups): array
+    {
+        $merged = [];
+
+        foreach ($groups as $group) {
+            foreach ($group as $middleware) {
+                if (!in_array($middleware, $merged, true)) {
+                    $merged[] = $middleware;
+                }
+            }
+        }
+
+        return $merged;
     }
 
     private function buildPattern(array $segments, array $paramNames): string

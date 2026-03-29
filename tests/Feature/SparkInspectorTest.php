@@ -56,11 +56,7 @@ final class SparkInspectorTest extends TestCase
 
     public function testDecoratesResponsesWithInspectorHeadersAndPersistsTheRequest(): void
     {
-        $_ENV['APP_ENV'] = 'dev';
-        $_ENV['SPARK_INSPECTOR'] = 'true';
-        $_ENV['SPARK_INSPECTOR_PREFIX'] = '/_spark';
-        $_ENV['SPARK_INSPECTOR_HISTORY'] = '5';
-        $_ENV['SPARK_INSPECTOR_MASK'] = 'false';
+        $this->enableInspector();
 
         $_SERVER['REQUEST_METHOD'] = 'GET';
         $_SERVER['REQUEST_URI'] = '/api/users?page=1';
@@ -103,6 +99,76 @@ final class SparkInspectorTest extends TestCase
         $this->assertGreaterThan(0, (float) $entry['metrics']['total_ms']);
     }
 
+    public function testInternalRequestsPageRendersStoredHistoryWithoutToolbarInjection(): void
+    {
+        $this->enableInspector();
+
+        $storage = new SparkInspectorStorage($this->basePath);
+        $storage->save($this->makeEntry('a1b2c3d4', '/one'));
+        $storage->save($this->makeEntry('b2c3d4e5', '/two'));
+
+        $_SERVER['REQUEST_METHOD'] = 'GET';
+        $_SERVER['REQUEST_URI'] = '/_spark/requests';
+        $_SERVER['HTTP_HOST'] = 'sparkphp.test';
+        $_SERVER['HTTP_ACCEPT'] = 'text/html';
+        $_GET = [];
+        $_POST = [];
+
+        SparkInspector::boot($this->basePath);
+
+        $request = new Request();
+        SparkInspector::startRequest($request);
+
+        ob_start();
+        $handled = SparkInspector::handleInternalRequest($request);
+        $output = (string) ob_get_clean();
+
+        $this->assertTrue($handled);
+        $this->assertStringContainsString('Spark Inspector', $output);
+        $this->assertStringContainsString('/one', $output);
+        $this->assertStringContainsString('/two', $output);
+        $this->assertStringNotContainsString('spark-inspector-toolbar', $output);
+    }
+
+    public function testInternalRequestApiReturnsStoredPayloadAsJson(): void
+    {
+        $this->enableInspector();
+
+        $entry = $this->makeEntry('c3d4e5f6', '/api/users');
+        $entry['queries'][] = [
+            'sql' => 'select * from users',
+            'bindings' => [],
+            'duration_ms' => 1.2,
+            'row_count' => 1,
+        ];
+
+        (new SparkInspectorStorage($this->basePath))->save($entry);
+
+        $_SERVER['REQUEST_METHOD'] = 'GET';
+        $_SERVER['REQUEST_URI'] = '/_spark/api/requests/c3d4e5f6';
+        $_SERVER['HTTP_HOST'] = 'sparkphp.test';
+        $_SERVER['HTTP_ACCEPT'] = 'application/json';
+        $_GET = [];
+        $_POST = [];
+
+        SparkInspector::boot($this->basePath);
+
+        $request = new Request();
+        SparkInspector::startRequest($request);
+
+        ob_start();
+        $handled = SparkInspector::handleInternalRequest($request);
+        $output = (string) ob_get_clean();
+
+        $payload = json_decode($output, true);
+
+        $this->assertTrue($handled);
+        $this->assertIsArray($payload);
+        $this->assertSame('c3d4e5f6', $payload['id']);
+        $this->assertSame('/api/users', $payload['request']['path']);
+        $this->assertCount(1, $payload['queries']);
+    }
+
     private function makeEntry(string $id, string $path): array
     {
         return [
@@ -122,6 +188,15 @@ final class SparkInspectorTest extends TestCase
                 'memory_peak_kb' => 256.0,
             ],
         ];
+    }
+
+    private function enableInspector(): void
+    {
+        $_ENV['APP_ENV'] = 'dev';
+        $_ENV['SPARK_INSPECTOR'] = 'true';
+        $_ENV['SPARK_INSPECTOR_PREFIX'] = '/_spark';
+        $_ENV['SPARK_INSPECTOR_HISTORY'] = '5';
+        $_ENV['SPARK_INSPECTOR_MASK'] = 'false';
     }
 
     private function deleteDirectory(string $path): void

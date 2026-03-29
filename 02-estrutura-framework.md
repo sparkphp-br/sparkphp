@@ -2,6 +2,13 @@
 
 Este documento define a estrutura completa de diretórios e arquivos do SparkPHP, as convenções de nomeação e o mapa de resolução automática de cada camada.
 
+Baseline atual do framework:
+
+- PHP 8.3+
+- SQLite 3.35+
+- MySQL 8.0+
+- PostgreSQL 13+
+
 ---
 
 ## Árvore de diretórios
@@ -11,10 +18,12 @@ Este documento define a estrutura completa de diretórios e arquivos do SparkPHP
 │
 ├── app/
 │   ├── routes/
+│   │   ├── _middleware.php                  → middleware global herdado por todas as rotas
 │   │   ├── index.php                          → GET /
 │   │   ├── about.php                          → GET /about
 │   │   ├── contact.php                        → GET|POST /contact
 │   │   └── api/
+│   │       ├── _middleware.php               → middleware herdado por `/api/*`
 │   │       ├── health.php                     → GET /api/health (público)
 │   │       ├── [auth]/
 │   │       │   ├── users.php                  → /api/users
@@ -142,7 +151,7 @@ O SparkPHP elimina por design os seguintes elementos comuns em outros frameworks
 | `/bootstrap/` | O bootstrap é interno ao `core/`. O desenvolvedor não precisa tocá-lo |
 | `routes/web.php` / `routes/api.php` | Rotas são definidas pelo sistema de arquivos em `app/routes/` |
 | `ServiceProvider` | Serviços são resolvidos por convenção e type-hint. Sem registro manual |
-| `Kernel.php` | Middleware global é por convenção de diretório. Sem arquivo centralizador |
+| `Kernel.php` | Middleware global e por diretório existem por convenção em `app/routes/_middleware.php` e pastas da arvore |
 | `AppServiceProvider` | Não existe bootstrap customizável pelo dev nessa camada |
 | `RouteServiceProvider` | O Router escaneia `app/routes/` automaticamente |
 
@@ -157,6 +166,8 @@ O SparkPHP elimina por design os seguintes elementos comuns em outros frameworks
 | `app/routes/index.php` | `/` | Definido dentro do arquivo |
 | `app/routes/about.php` | `/about` | Definido dentro do arquivo |
 | `app/routes/api/users.php` | `/api/users` | Definido dentro do arquivo |
+| `app/routes/_middleware.php` | `—` | Middleware global herdado, nao vira rota |
+| `app/routes/api/_middleware.php` | `—` | Middleware herdado por `/api/*`, nao vira rota |
 | `app/routes/api/users.[id].php` | `/api/users/:id` | Definido dentro do arquivo |
 | `app/routes/api/[auth]/users.php` | `/api/users` | Protegido por middleware `auth` |
 | `app/routes/api/[auth+throttle]/payments.php` | `/api/payments` | Protegido por `auth` e `throttle` |
@@ -165,6 +176,7 @@ O SparkPHP elimina por design os seguintes elementos comuns em outros frameworks
 **Regras:**
 
 - O path do arquivo, relativo a `app/routes/`, define a URL.
+- `_middleware.php` aplica middleware herdado e nao gera rota.
 - Pastas com `[colchetes]` aplicam middleware — não aparecem na URL.
 - Parâmetros dinâmicos usam notação de ponto: `users.[id].php` → `/users/:id`.
 - Múltiplos parâmetros: `orders.[orderId].items.[itemId].php` → `/orders/:orderId/items/:itemId`.
@@ -200,7 +212,7 @@ O path não é declarado. O framework já sabe pelo nome e localização do arqu
 **Regras:**
 
 - O nome do arquivo (sem extensão) é o apelido.
-- Middleware é aplicado por diretório (`[auth]/`) ou inline (`.guard('auth')`).
+- Middleware e aplicado por `_middleware.php`, por diretorio (`[auth]/`) ou inline (`.guard('auth')`).
 - Sem registro manual em nenhum lugar.
 
 **Dentro de um middleware:**
@@ -351,6 +363,12 @@ LOG_LEVEL=debug
 
 Opcionalmente, você pode agrupar valores da aplicação em `app/config/*.php` e lê-los com `config('arquivo.chave')`. Esses arquivos não registram serviços, rotas ou middlewares; servem apenas para organizar valores da aplicação.
 
+Drivers suportados oficialmente nesta baseline:
+
+- `sqlite` com SQLite 3.35+
+- `mysql` com MySQL 8.0+
+- `pgsql` com PostgreSQL 13+
+
 Acesso no código:
 
 ```php
@@ -395,7 +413,8 @@ env('CUSTOM_VAR', 'default'); // com fallback
 |---|---|---|
 | Rota | caminho do arquivo = URL | `routes/api/users.php` → `/api/users` |
 | Parâmetro | ponto com colchetes no nome | `users.[id].php` → `/users/:id` |
-| Middleware (dir) | pasta com colchetes | `[auth]/` → aplica `middleware/auth.php` |
+| Middleware (global) | `routes/_middleware.php` | aplica a arvore inteira |
+| Middleware (dir) | `_middleware.php` ou pasta com colchetes | `api/_middleware.php` ou `[auth]/` |
 | Middleware (múlt.) | `+` separa nomes | `[auth+throttle]/` |
 | Middleware (inline) | `.guard()` na rota | `->guard('auth', 'throttle:30')` |
 | View automática | espelho da rota | `views/about.spark` ↔ `routes/about.php` |

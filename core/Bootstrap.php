@@ -2,12 +2,16 @@
 
 class Bootstrap
 {
+    public const MIN_PHP_VERSION = '8.3';
+    public const MIN_PHP_VERSION_ID = 80300;
+
     private static ?Bootstrap $instance = null;
     private Container $container;
     private string $basePath;
 
     public function __construct(string $basePath)
     {
+        $this->ensureRuntimeBaseline();
         $this->basePath = rtrim($basePath, '/\\');
         static::$instance = $this;
     }
@@ -258,7 +262,10 @@ class Bootstrap
         $pipeline = new Middleware($this->basePath, $middlewares);
         $early    = $pipeline->run();
         if ($early !== null) {
-            $early->send();
+            $response = new Response();
+            $view     = new View($this->basePath);
+            $this->container->singleton(View::class, fn() => $view);
+            $response->resolve($early, $request, $view, $match['route'] ?? '');
             return;
         }
 
@@ -313,6 +320,15 @@ class Bootstrap
     private function isDev(): bool
     {
         return ($_ENV['APP_ENV'] ?? 'dev') === 'dev';
+    }
+
+    private function ensureRuntimeBaseline(): void
+    {
+        if (PHP_VERSION_ID < self::MIN_PHP_VERSION_ID) {
+            throw new RuntimeException(
+                'SparkPHP requires PHP ' . self::MIN_PHP_VERSION . '+. Current version: ' . PHP_VERSION
+            );
+        }
     }
 
     private function ensureDir(string $path): void

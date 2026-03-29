@@ -30,19 +30,48 @@ if (!auth() || !auth()->is_admin) {
 
 ## Aplicando middlewares
 
-### 1. Guard inline (por rota)
+### 1. Middleware global
+
+Voce pode aplicar middleware em **todas** as rotas com `app/routes/_middleware.php`:
 
 ```php
-// app/routes/admin/settings.php
+// app/routes/_middleware.php
+<?php
 
-get(fn() => ['settings' => true])->guard('auth', 'csrf');
-
-post(fn() => ['saved' => true])->guard('auth', 'csrf', 'throttle:10');
+return ['cors'];
 ```
 
-### 2. Middleware por diretorio (automatico)
+O arquivo pode retornar:
 
-No SparkPHP atual, middleware de diretorio e aplicado por **pastas entre colchetes**:
+- `null` para nao aplicar nada
+- uma `string` com um alias
+- um `array` com aliases e parametros, como `['auth', 'throttle:60']`
+
+Esse arquivo e uma convencao do Router. Ele **nao vira rota** e **nao aparece na URL**.
+
+### 2. Middleware por diretorio com `_middleware.php`
+
+Cada pasta pode ter seu proprio `_middleware.php`:
+
+```php
+// app/routes/api/_middleware.php
+<?php
+
+return ['auth'];
+```
+
+```php
+// app/routes/api/admin/_middleware.php
+<?php
+
+return ['role:admin'];
+```
+
+Tudo que estiver dentro dessas pastas herda os middlewares na ordem em que as pastas sao percorridas.
+
+### 3. Middleware por diretorio via pastas entre colchetes
+
+Voce tambem pode aplicar middleware por estrutura de pastas:
 
 ```text
 app/routes/[auth]/dashboard.php
@@ -56,12 +85,17 @@ Regras:
 - Voce pode combinar varios middlewares: `[auth+throttle]`
 - Pastas aninhadas acumulam middleware na ordem em que aparecem
 
-### 3. Middleware global
+### 4. Guard inline (por rota)
 
-A convencao `app/routes/_middleware.php` ainda **nao faz parte do runtime atual**. Ela esta planejada no roadmap. Hoje, para regras amplas, prefira:
+```php
+// app/routes/admin/settings.php
 
-- organizar rotas em diretorios como `[auth]`, `[csrf]` e `[throttle]`
-- usar `guard()` nas rotas onde a regra precisar ser explicita
+get(fn() => ['settings' => true])->guard('auth', 'csrf');
+
+post(fn() => ['saved' => true])->guard('auth', 'csrf', 'throttle:10');
+```
+
+O `guard()` e sempre aplicado **depois** dos middlewares herdados da arvore de rotas.
 
 ## Middleware com parametros
 
@@ -152,9 +186,27 @@ Note como o mesmo middleware funciona para APIs (retorna JSON 401) e web (redire
 
 ## Ordem de execucao
 
-1. Middleware de diretorio via pastas `[auth]`, `[auth+throttle]`, etc.
-2. Guards da rota (`.guard('auth', 'csrf')`)
-3. Handler da rota
+1. `app/routes/_middleware.php`
+2. Cada `_middleware.php` das pastas percorridas, da raiz para a folha
+3. Pastas com `[auth]`, `[auth+throttle]`, etc., na ordem em que aparecem
+4. Guards da rota (`.guard('auth', 'csrf')`)
+5. Handler da rota
+
+### Exemplo de composicao
+
+```text
+app/routes/_middleware.php                  -> ['cors']
+app/routes/api/_middleware.php              -> ['auth']
+app/routes/api/[admin]/reports.php          -> guard('throttle:10')
+```
+
+A ordem efetiva sera:
+
+```php
+['cors', 'auth', 'admin', 'throttle:10']
+```
+
+Se o mesmo middleware aparecer mais de uma vez, o Spark preserva a **primeira ocorrencia** e remove duplicatas.
 
 ## Proximo passo
 

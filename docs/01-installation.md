@@ -2,9 +2,22 @@
 
 ## Requisitos
 
-- PHP 8.1 ou superior
+- PHP 8.3 ou superior
 - Extensoes: `pdo`, `mbstring`, `openssl`, `json`
+- Driver PDO do banco escolhido:
+  - `pdo_sqlite` para SQLite
+  - `pdo_mysql` para MySQL
+  - `pdo_pgsql` para PostgreSQL
 - Composer (para dependencias de desenvolvimento)
+
+## Baseline suportada
+
+- PHP: 8.3+
+- SQLite: 3.35+
+- MySQL: 8.0+
+- PostgreSQL: 13+
+
+Essa baseline acompanha o core atual do SparkPHP, incluindo operacoes de schema como `DROP COLUMN` e `RENAME COLUMN`, alem do uso de tipos modernos como `JSON` / `JSONB` e `UUID`.
 
 ## Criando um projeto
 
@@ -44,7 +57,7 @@ meu-projeto/
 │   ├── jobs/           ← classes de jobs para filas
 │   ├── middleware/      ← middlewares (nome do arquivo = alias)
 │   ├── models/         ← models (nome do arquivo = nome da classe)
-│   ├── routes/         ← rotas (caminho do arquivo = URL)
+│   ├── routes/         ← rotas (caminho do arquivo = URL, `_middleware.php` = middleware herdado)
 │   ├── services/       ← classes de servico
 │   └── views/
 │       ├── layouts/    ← layouts (.spark)

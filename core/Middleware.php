@@ -13,14 +13,14 @@ class Middleware
 
     /**
      * Run the middleware pipeline.
-     * Returns a Response object if any middleware blocks, null if all pass.
+     * Returns the first non-null middleware result, or null if all pass.
      */
-    public function run(): ?Response
+    public function run(): mixed
     {
         foreach ($this->names as $name) {
             $result = $this->execute($name);
             if ($result !== null) {
-                return $result instanceof Response ? $result : null;
+                return $result;
             }
         }
         return null;
@@ -51,7 +51,7 @@ class Middleware
             SparkInspector::recordMiddleware(
                 $alias,
                 $params,
-                $result instanceof Response ? 'blocked' : 'passed'
+                $result !== null ? 'blocked' : 'passed'
             );
         }
 

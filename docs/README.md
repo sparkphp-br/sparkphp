@@ -2,6 +2,8 @@
 
 **Write what matters.** Framework PHP minimalista, file-based, zero-config.
 
+Baseline atual: PHP 8.3+, SQLite 3.35+, MySQL 8.0+ e PostgreSQL 13+.
+
 ---
 
 ## Guia
@@ -14,13 +16,15 @@
 | 04 | [Views & Templates](04-views.md)               | Spark templates, layouts, pipes, loops, forms, componentes  |
 | 05 | [Database](05-database.md)                     | QueryBuilder, Models, relacionamentos, migrations, seeds    |
 | 06 | [Validation](06-validation.md)                 | Regras, mensagens, erros na view, old input                 |
-| 07 | [Middleware](07-middleware.md)                  | Criando, aplicando por rota/diretorio, parametros           |
+| 07 | [Middleware](07-middleware.md)                  | Criando, aplicando com `_middleware.php`, por rota/diretorio |
 | 08 | [Authentication](08-authentication.md)         | Login, logout, registro, protegendo rotas                   |
 | 09 | [Session & Cache](09-session-cache.md)         | Session, flash, CSRF, cache, remember                       |
 | 10 | [Events & Jobs](10-events-jobs.md)             | Eventos file-based, jobs, filas, workers                    |
 | 11 | [Mail](11-mail.md)                             | SMTP, views, anexos, e-mail assincrono                      |
 | 12 | [Helpers](12-helpers.md)                       | Referencia completa de todas as funcoes globais             |
 | 13 | [CLI](13-cli.md)                               | Todos os comandos `php spark`, geradores, deploy            |
+| 14 | [Releases & Compatibilidade](14-releases.md)   | SemVer, suporte, baseline, deprecacoes                      |
+| 15 | [Upgrade Guide](15-upgrade-guide.md)           | Checklist oficial de upgrade e mudancas importantes         |
 
 ---
 

@@ -2,6 +2,23 @@
 
 O SparkPHP inclui um ORM completo com QueryBuilder, Models, Migrations e Seeds. Suporta MySQL, PostgreSQL e SQLite.
 
+## Matriz suportada
+
+| Banco | Baseline suportada | Observacoes |
+|---|---|---|
+| SQLite | 3.35+ | baseline escolhida por causa de `ALTER TABLE ... DROP COLUMN` e `RENAME COLUMN` |
+| MySQL | 8.0+ | `JSON`, `utf8mb4`, `AFTER` e comments de coluna funcionam melhor nessa linha |
+| PostgreSQL | 13+ | `JSONB`, `UUID` nativo e DDL moderno coberto pela grammar atual |
+
+### Notas de compatibilidade
+
+- O Spark valida e testa SQLite por default na suite local.
+- MySQL e PostgreSQL ja tem cobertura de integracao opcional na suite, ativada por variaveis de ambiente.
+- Alguns detalhes de schema continuam dependentes do driver:
+  - `after()` e `comment()` sao especificos de MySQL
+  - `uuid()` vira tipo nativo no PostgreSQL e string nos demais drivers
+  - `json()` vira `JSONB` no PostgreSQL e `TEXT` no SQLite
+
 ## Configuracao
 
 No `.env`:

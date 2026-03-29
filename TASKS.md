@@ -96,22 +96,22 @@ Sempre analise os seguintes documentos (vão criar uma orientação melhor do pr
   - Remover promessas que não existem no core ou implementar o que já foi documentado
   - Revisar README, docs e exemplos para refletirem o comportamento real do framework
 
-- [ ] Task 4.2 — Suite 100% verde e baseline de qualidade
+- [x] Task 4.2 — Suite 100% verde e baseline de qualidade
   - Corrigir a falha atual do `SparkInspector` na suite end-to-end
   - Fechar lacunas de regressão em Router, Middleware, Helpers e Inspector
   - Definir meta mínima de cobertura para componentes críticos
 
-- [ ] Task 4.3 — Middleware global e por diretório de verdade
+- [x] Task 4.3 — Middleware global e por diretório de verdade
   - Implementar `_middleware.php` global e por pasta conforme a documentação
   - Garantir ordem previsível: global → diretório → guard inline → handler
   - Cobrir com testes de precedência, bloqueio e composição
 
-- [ ] Task 4.4 — Baseline moderno do framework
+- [x] Task 4.4 — Baseline moderno do framework
   - Elevar requisito mínimo para PHP 8.3+
   - Revisar compatibilidade com SQLite, MySQL e PostgreSQL suportados
   - Atualizar documentação, `composer.json` e suite de testes para a nova baseline
 
-- [ ] Task 4.5 — Política pública de releases e compatibilidade
+- [x] Task 4.5 — Política pública de releases e compatibilidade
   - Definir versionamento semântico do SparkPHP
   - Criar política de suporte para PHP, banco e segurança
   - Publicar guia de upgrade e política de deprecações

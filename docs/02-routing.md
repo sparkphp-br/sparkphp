@@ -182,7 +182,7 @@ Use em views Spark:
 
 ## Guard (middleware inline)
 
-Alem de middlewares por diretorio (veja [Middleware](07-middleware.md)), voce pode aplicar guards diretamente na rota:
+Alem dos arquivos `app/routes/_middleware.php`, dos `_middleware.php` aninhados e das pastas de middleware como `[auth]`, voce pode aplicar guards diretamente na rota:
 
 ```php
 // app/routes/admin/settings.php
@@ -292,12 +292,14 @@ app/routes/users.[id].php     → /users/:id  (prioridade 10 — parametro)
 php spark routes:list
 ```
 
+O comando mostra a ordem efetiva dos middlewares herdados e inline para cada rota.
+
 Saida:
 
 ```
   URL                             Name                Middlewares             File
   ────────────────────────────────────────────────────────────────────────────────────────────
-  /api/health                     —                   —                       api/health.php
+  /api/reports                    —                   cors, auth, admin       api/[admin]/reports.php
   /                               —                   —                       index.php
   /documents                      docs.index          —                       docs/index.php
   /documents/:slug                docs.show           —                       docs.[slug].php

@@ -163,6 +163,45 @@ final class HttpLifecycleTest extends TestCase
         $this->assertSame(404, $response['status']);
     }
 
+    public function testGlobalDirectoryAndInlineMiddlewareRunInPredictableOrder(): void
+    {
+        $port = $this->startServer();
+
+        $response = $this->request($port, 'GET', '/api/order', [
+            'Accept: application/json',
+        ]);
+
+        $payload = json_decode($response['body'], true);
+
+        $this->assertSame(200, $response['status']);
+        $this->assertSame([
+            'mw_global',
+            'mw_api',
+            'mw_dir',
+            'mw_inline',
+            'handler',
+        ], $payload['chain']);
+    }
+
+    public function testBlockingMiddlewareStopsBeforeHandlerAfterInheritedMiddlewareRuns(): void
+    {
+        $port = $this->startServer();
+
+        $response = $this->request($port, 'GET', '/api/blocked', [
+            'Accept: application/json',
+        ]);
+
+        $payload = json_decode($response['body'], true);
+
+        $this->assertSame(409, $response['status']);
+        $this->assertSame('mw_block', $payload['blocked_by']);
+        $this->assertSame([
+            'mw_global',
+            'mw_api',
+            'mw_block',
+        ], $payload['chain']);
+    }
+
     private function buildFixture(): void
     {
         mkdir($this->basePath, 0777, true);
@@ -170,7 +209,9 @@ final class HttpLifecycleTest extends TestCase
 
         mkdir($this->basePath . '/app/events', 0777, true);
         mkdir($this->basePath . '/app/jobs', 0777, true);
+        mkdir($this->basePath . '/app/middleware', 0777, true);
         mkdir($this->basePath . '/app/routes/api', 0777, true);
+        mkdir($this->basePath . '/app/routes/api/[mw_dir]', 0777, true);
         mkdir($this->basePath . '/app/views/layouts', 0777, true);
         mkdir($this->basePath . '/app/views/errors', 0777, true);
         mkdir($this->basePath . '/public', 0777, true);
@@ -184,6 +225,18 @@ final class HttpLifecycleTest extends TestCase
 
         copy(__DIR__ . '/../../public/index.php', $this->basePath . '/public/index.php');
         $this->writeEnv('dev');
+
+        file_put_contents($this->basePath . '/app/routes/_middleware.php', <<<'PHP'
+<?php
+return ['mw_global'];
+PHP
+        );
+
+        file_put_contents($this->basePath . '/app/routes/api/_middleware.php', <<<'PHP'
+<?php
+return ['mw_api'];
+PHP
+        );
 
         $databasePath = $this->basePath . '/database.sqlite';
         touch($databasePath);
@@ -247,9 +300,92 @@ get(function () {
 PHP
         );
 
+        file_put_contents($this->basePath . '/app/routes/api/[mw_dir]/order.php', <<<'PHP'
+<?php
+get(function () {
+    $log = storage_path('middleware.log');
+    $chain = is_file($log) ? json_decode((string) file_get_contents($log), true) : [];
+    $chain = is_array($chain) ? $chain : [];
+    $chain[] = 'handler';
+    file_put_contents($log, json_encode($chain, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+
+    return ['chain' => $chain];
+})->guard('mw_inline');
+PHP
+        );
+
+        file_put_contents($this->basePath . '/app/routes/api/blocked.php', <<<'PHP'
+<?php
+get(fn() => ['handler' => 'should-not-run'])->guard('mw_block');
+PHP
+        );
+
         file_put_contents($this->basePath . '/app/routes/users.php', <<<'PHP'
 <?php
 post(fn() => input());
+PHP
+        );
+
+        file_put_contents($this->basePath . '/app/middleware/mw_global.php', <<<'PHP'
+<?php
+$log = storage_path('middleware.log');
+$chain = is_file($log) ? json_decode((string) file_get_contents($log), true) : [];
+$chain = is_array($chain) ? $chain : [];
+$chain[] = 'mw_global';
+file_put_contents($log, json_encode($chain, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+
+return null;
+PHP
+        );
+
+        file_put_contents($this->basePath . '/app/middleware/mw_api.php', <<<'PHP'
+<?php
+$log = storage_path('middleware.log');
+$chain = is_file($log) ? json_decode((string) file_get_contents($log), true) : [];
+$chain = is_array($chain) ? $chain : [];
+$chain[] = 'mw_api';
+file_put_contents($log, json_encode($chain, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+
+return null;
+PHP
+        );
+
+        file_put_contents($this->basePath . '/app/middleware/mw_dir.php', <<<'PHP'
+<?php
+$log = storage_path('middleware.log');
+$chain = is_file($log) ? json_decode((string) file_get_contents($log), true) : [];
+$chain = is_array($chain) ? $chain : [];
+$chain[] = 'mw_dir';
+file_put_contents($log, json_encode($chain, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+
+return null;
+PHP
+        );
+
+        file_put_contents($this->basePath . '/app/middleware/mw_inline.php', <<<'PHP'
+<?php
+$log = storage_path('middleware.log');
+$chain = is_file($log) ? json_decode((string) file_get_contents($log), true) : [];
+$chain = is_array($chain) ? $chain : [];
+$chain[] = 'mw_inline';
+file_put_contents($log, json_encode($chain, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+
+return null;
+PHP
+        );
+
+        file_put_contents($this->basePath . '/app/middleware/mw_block.php', <<<'PHP'
+<?php
+$log = storage_path('middleware.log');
+$chain = is_file($log) ? json_decode((string) file_get_contents($log), true) : [];
+$chain = is_array($chain) ? $chain : [];
+$chain[] = 'mw_block';
+file_put_contents($log, json_encode($chain, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+
+return json([
+    'blocked_by' => 'mw_block',
+    'chain' => $chain,
+], 409);
 PHP
         );
 
