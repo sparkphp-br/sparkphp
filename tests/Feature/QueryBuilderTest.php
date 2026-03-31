@@ -534,6 +534,22 @@ final class QueryBuilderTest extends TestCase
         $this->assertStringContainsString('HAVING', $sql);
     }
 
+    public function testToRawSqlPreservesBindingOrderAcrossWhereAndHaving(): void
+    {
+        [$sql, $bindings] = db('orders')
+            ->join('users', 'orders.user_id', '=', 'users.id')
+            ->where('orders.status', 'completed')
+            ->where('users.name', 'João')
+            ->selectRaw('users.name, COUNT(*) as total')
+            ->groupBy('users.name')
+            ->havingRaw('COUNT(*) > ?', [1])
+            ->toRawSql();
+
+        $this->assertStringContainsString('WHERE `orders`.`status` = ? AND `users`.`name` = ?', $sql);
+        $this->assertStringContainsString('HAVING COUNT(*) > ?', $sql);
+        $this->assertSame(['completed', 'João', 1], $bindings);
+    }
+
     // ─── Pagination edge case: empty table ───────────
 
     public function testPaginateHandlesEmptyTable(): void
