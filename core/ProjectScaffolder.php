@@ -7,16 +7,14 @@ class ProjectScaffolder
     private const PROJECT_TEMPLATE_FILES = [
         '.env.example',
         '.gitignore',
+        '.github/workflows/ci.yml',
         'composer.json',
         'composer.lock',
+        'phpstan.neon.dist',
         'phpunit.xml',
         'spark',
         'VERSION',
         'CHANGELOG.md',
-        '01-spark-template.md',
-        '02-estrutura-framework.md',
-        '03-core-engine.md',
-        '04-identidade-filosofia.md',
     ];
 
     private const PROJECT_TEMPLATE_DIRECTORIES = [
@@ -26,6 +24,7 @@ class ProjectScaffolder
         'docs',
         'public',
         'tests',
+        'tools',
     ];
 
     private string $basePath;

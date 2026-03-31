@@ -7,14 +7,27 @@
         "php": ">=8.3"
     },
     "require-dev": {
+        "phpstan/phpstan": "^2.1",
         "phpunit/phpunit": "^10.0"
+    },
+    "autoload": {
+        "files": [
+            "core/helpers.php"
+        ],
+        "classmap": [
+            "core/",
+            "app/",
+            "database/seeds/"
+        ]
     },
     "config": {
         "optimize-autoloader": true
     },
     "scripts": {
+        "lint": "php tools/lint.php",
         "serve": "php spark serve",
         "test": "vendor/bin/phpunit",
+        "analyse": "vendor/bin/phpstan analyse",
         "bench": "php spark benchmark",
         "post-create-project-cmd": [
             "@php spark init --quiet"

@@ -4,6 +4,8 @@ Esta suite existe para proteger o core do SparkPHP, não apenas para validar cas
 
 ## Gate mínimo
 
+- `composer lint` precisa terminar sem erros.
+- `composer analyse` precisa terminar sem erros.
 - `vendor/bin/phpunit` precisa terminar sem falhas.
 - `skipped` só é aceitável para integrações externas opcionais, como testes de MySQL e PostgreSQL que dependem de ambiente configurado.
 - Toda correção de bug em componentes centrais deve nascer com um teste de regressão no mesmo PR.

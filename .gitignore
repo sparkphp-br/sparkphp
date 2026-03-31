@@ -13,3 +13,4 @@ storage/sessions/
 storage/uploads/
 *.DS_Store
 Thumbs.db
+tools/vscode/sparkphp-language/*.vsix

@@ -10,10 +10,10 @@ Este não é o CHANGELOG. O CHANGELOG registra releases públicas e mudanças de
 
 Estabeleceu os quatro documentos de referência interna do produto:
 
-- `01-spark-template.md` — especificação da template engine com diretivas, pipes e eliminação de verbosidades do Blade
-- `02-estrutura-framework.md` — árvore completa de diretórios, convenções de nomeação e mapa camada → convenção → exemplo
-- `03-core-engine.md` — componentes internos, fluxo de request boot→route→middleware→response e estratégia de cache
-- `04-identidade-filosofia.md` — manifesto, princípios de design e convenções gerais do SparkPHP
+- `docs/architecture/01-spark-template.md` — especificação da template engine com diretivas, pipes e eliminação de verbosidades do Blade
+- `docs/architecture/02-estrutura-framework.md` — árvore completa de diretórios, convenções de nomeação e mapa camada → convenção → exemplo
+- `docs/architecture/03-core-engine.md` — componentes internos, fluxo de request boot→route→middleware→response e estratégia de cache
+- `docs/architecture/04-identidade-filosofia.md` — manifesto, princípios de design e convenções gerais do SparkPHP
 
 ---
 

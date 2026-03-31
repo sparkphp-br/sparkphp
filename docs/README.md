@@ -51,6 +51,15 @@ Narrativa publica atual do produto: **mais simples, mais previsivel, mais observ
 | [Template core vs avancado](template-core-vs-advanced.md) | 10 diretivas essenciais vs DSL avancada |
 | [Seguranca do Inspector](inspector-security.md) | Politica de masking, comportamento por ambiente, guardrails |
 
+### Arquitetura interna
+
+| Doc | O que voce vai encontrar |
+|---|---|
+| [Template fundacional](architecture/01-spark-template.md) | Especificacao original da template engine e suas diretivas |
+| [Estrutura do framework](architecture/02-estrutura-framework.md) | Mapa de diretorios, convencoes e resolucao file-based |
+| [Core engine](architecture/03-core-engine.md) | Fluxo interno de request, cache e componentes centrais |
+| [Identidade e filosofia](architecture/04-identidade-filosofia.md) | Manifesto do produto, principios e filtros de design |
+
 ---
 
 ## Quick Start

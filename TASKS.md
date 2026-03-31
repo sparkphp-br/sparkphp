@@ -4,10 +4,10 @@
 
 Antes de abrir qualquer tarefa, leia os documentos fundacionais:
 
-- `01-spark-template.md`
-- `02-estrutura-framework.md`
-- `03-core-engine.md`
-- `04-identidade-filosofia.md`
+- `docs/architecture/01-spark-template.md`
+- `docs/architecture/02-estrutura-framework.md`
+- `docs/architecture/03-core-engine.md`
+- `docs/architecture/04-identidade-filosofia.md`
 
 Filtro obrigatório para toda nova feature ou mudança:
 

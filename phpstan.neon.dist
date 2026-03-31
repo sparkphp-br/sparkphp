@@ -1,0 +1,18 @@
+parameters:
+  level: 0
+  paths:
+    - core
+    - app
+    - database
+    - public/index.php
+  excludePaths:
+    - */vendor/*
+    - */storage/*
+    - */tools/vscode/*
+    - */core/stubs/*
+  bootstrapFiles:
+    - vendor/autoload.php
+    - tools/phpstan/bootstrap.php
+  ignoreErrors:
+    - identifier: new.static
+    - identifier: property.uninitializedReadonly

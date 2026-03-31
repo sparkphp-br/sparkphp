@@ -14,7 +14,7 @@ esta pronta.
 
 ## Fluxo esperado
 
-1. entenda a filosofia do projeto em `04-identidade-filosofia.md`
+1. entenda a filosofia do projeto em `docs/architecture/04-identidade-filosofia.md`
 2. confira a documentacao existente em `docs/`
 3. implemente a mudanca com o menor numero de conceitos novos possivel
 4. atualize docs e testes quando o comportamento publico mudar
@@ -58,6 +58,8 @@ Guia detalhado:
 
 ## Checklist minimo antes de abrir PR
 
+- rode `composer lint`
+- rode `composer analyse`
 - rode `vendor/bin/phpunit --display-skipped`
 - revise `docs/README.md` se a mudanca for publica
 - atualize guias especificos em `docs/` quando necessario

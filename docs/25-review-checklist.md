@@ -156,7 +156,7 @@ Por que rejeita:
 
 Esse gate agora aparece em tres lugares:
 
-- `04-identidade-filosofia.md`
+- `docs/architecture/04-identidade-filosofia.md`
 - `CONTRIBUTING.md`
 - `.github/PULL_REQUEST_TEMPLATE.md`
 

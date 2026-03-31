@@ -22,6 +22,8 @@ Explique objetivamente:
 
 ## Checklist
 
+- [ ] Rodei `composer lint`
+- [ ] Rodei `composer analyse`
 - [ ] Rodei `vendor/bin/phpunit --display-skipped`
 - [ ] Atualizei testes quando o contrato publico mudou
 - [ ] Atualizei docs quando a superficie publica mudou

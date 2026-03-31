@@ -12,17 +12,17 @@ Este documento audita os comportamentos prometidos pela documentação e verific
 
 | Comportamento | Prometido em | Implementado em | Status |
 |---|---|---|---|
-| Array + `Accept: text/html` → view espelho | `03-core-engine.md`, `docs/04-views.md` | `Response.php` + `Router.php` | ✅ Coerente |
-| Array + `Accept: application/json` → JSON 200 | `03-core-engine.md` | `Response.php` | ✅ Coerente |
-| `null` em GET → 404 automático | `03-core-engine.md` | `Response.php` | ✅ Coerente |
-| Objeto/array em POST → 201 automático | `03-core-engine.md` | `Response.php` | ✅ Coerente |
-| String → HTML 200 | `03-core-engine.md` | `Response.php` | ✅ Coerente |
+| Array + `Accept: text/html` → view espelho | `docs/architecture/03-core-engine.md`, `docs/04-views.md` | `Response.php` + `Router.php` | ✅ Coerente |
+| Array + `Accept: application/json` → JSON 200 | `docs/architecture/03-core-engine.md` | `Response.php` | ✅ Coerente |
+| `null` em GET → 404 automático | `docs/architecture/03-core-engine.md` | `Response.php` | ✅ Coerente |
+| Objeto/array em POST → 201 automático | `docs/architecture/03-core-engine.md` | `Response.php` | ✅ Coerente |
+| String → HTML 200 | `docs/architecture/03-core-engine.md` | `Response.php` | ✅ Coerente |
 
 ## Route model binding
 
 | Comportamento | Prometido em | Implementado em | Status |
 |---|---|---|---|
-| Type-hint de Model + param URL → `findOrFail()` | `03-core-engine.md`, `docs/02-routing.md` | `Container.php` + `Router.php` | ✅ Coerente |
+| Type-hint de Model + param URL → `findOrFail()` | `docs/architecture/03-core-engine.md`, `docs/02-routing.md` | `Container.php` + `Router.php` | ✅ Coerente |
 | Falha de binding → 404 com mensagem clara | `docs/02-routing.md` | `Container.php` | ✅ Coerente |
 | Separação clara de route binding vs DI de services | `docs/02-routing.md` | `Container.php` | ✅ Coerente |
 
@@ -30,35 +30,35 @@ Este documento audita os comportamentos prometidos pela documentação e verific
 
 | Comportamento | Prometido em | Implementado em | Status |
 |---|---|---|---|
-| `fillable` inferido das colunas da tabela | `03-core-engine.md` | `Model.php` + `Schema.php` | ✅ Coerente |
-| Relações inferidas de FKs do schema | `03-core-engine.md` | `Relation.php` | ⚠️ Parcial — apenas para FK explícitas com nomenclatura convencional |
-| Timestamps automáticos (`created_at`, `updated_at`) | `03-core-engine.md` | `Model.php` | ✅ Coerente |
+| `fillable` inferido das colunas da tabela | `docs/architecture/03-core-engine.md` | `Model.php` + `Schema.php` | ✅ Coerente |
+| Relações inferidas de FKs do schema | `docs/architecture/03-core-engine.md` | `Relation.php` | ⚠️ Parcial — apenas para FK explícitas com nomenclatura convencional |
+| Timestamps automáticos (`created_at`, `updated_at`) | `docs/architecture/03-core-engine.md` | `Model.php` | ✅ Coerente |
 
 ## Middleware
 
 | Comportamento | Prometido em | Implementado em | Status |
 |---|---|---|---|
-| `_middleware.php` global aplicado a toda a árvore | `02-estrutura-framework.md` | `Middleware.php` + `Router.php` | ✅ Coerente |
-| Middleware por diretório de rotas | `02-estrutura-framework.md` | `Router.php` | ✅ Coerente |
-| Ordem: global → diretório → guard inline → handler | `02-estrutura-framework.md` | `Middleware.php` | ✅ Coerente |
-| Middleware não silencia erros — falha com status claro | `04-identidade-filosofia.md` | `Middleware.php` | ✅ Coerente |
+| `_middleware.php` global aplicado a toda a árvore | `docs/architecture/02-estrutura-framework.md` | `Middleware.php` + `Router.php` | ✅ Coerente |
+| Middleware por diretório de rotas | `docs/architecture/02-estrutura-framework.md` | `Router.php` | ✅ Coerente |
+| Ordem: global → diretório → guard inline → handler | `docs/architecture/02-estrutura-framework.md` | `Middleware.php` | ✅ Coerente |
+| Middleware não silencia erros — falha com status claro | `docs/architecture/04-identidade-filosofia.md` | `Middleware.php` | ✅ Coerente |
 
 ## Events por filename
 
 | Comportamento | Prometido em | Implementado em | Status |
 |---|---|---|---|
-| `users.created.php` dispara ao criar User | `02-estrutura-framework.md` | `EventEmitter.php` | ✅ Coerente |
-| Auto-discovery de eventos em `app/events/` | `02-estrutura-framework.md` | `EventEmitter.php` | ✅ Coerente |
+| `users.created.php` dispara ao criar User | `docs/architecture/02-estrutura-framework.md` | `EventEmitter.php` | ✅ Coerente |
+| Auto-discovery de eventos em `app/events/` | `docs/architecture/02-estrutura-framework.md` | `EventEmitter.php` | ✅ Coerente |
 
 ## Template engine
 
 | Comportamento | Prometido em | Implementado em | Status |
 |---|---|---|---|
-| View espelho automática sem `@extends` | `01-spark-template.md` | `View.php` | ✅ Coerente |
-| Layout padrão `layouts/main.spark` | `01-spark-template.md` | `View.php` | ✅ Coerente |
-| Escape contextual automático em `{{ }}` | `01-spark-template.md` | `View.php` | ✅ Coerente |
-| `{!! !!}` sem escape (opt-in) | `01-spark-template.md` | `View.php` | ✅ Coerente |
-| Compilação cacheada em `storage/cache/views/` | `01-spark-template.md` | `View.php` | ✅ Coerente |
+| View espelho automática sem `@extends` | `docs/architecture/01-spark-template.md` | `View.php` | ✅ Coerente |
+| Layout padrão `layouts/main.spark` | `docs/architecture/01-spark-template.md` | `View.php` | ✅ Coerente |
+| Escape contextual automático em `{{ }}` | `docs/architecture/01-spark-template.md` | `View.php` | ✅ Coerente |
+| `{!! !!}` sem escape (opt-in) | `docs/architecture/01-spark-template.md` | `View.php` | ✅ Coerente |
+| Compilação cacheada em `storage/cache/views/` | `docs/architecture/01-spark-template.md` | `View.php` | ✅ Coerente |
 
 ---
 
@@ -66,7 +66,7 @@ Este documento audita os comportamentos prometidos pela documentação e verific
 
 ### Relações inferidas de FKs (⚠️ Parcial)
 
-A documentação (`03-core-engine.md`) promete que relações são inferidas de FKs do schema. Na prática, a inferência funciona apenas para FKs que seguem a nomenclatura convencional (`{tabela}_id`). FKs com nomes não-convencionais precisam ser declaradas explicitamente.
+A documentação (`docs/architecture/03-core-engine.md`) promete que relações são inferidas de FKs do schema. Na prática, a inferência funciona apenas para FKs que seguem a nomenclatura convencional (`{tabela}_id`). FKs com nomes não-convencionais precisam ser declaradas explicitamente.
 
 **Ação recomendada:** Documentar esta limitação em `docs/05-database.md` antes de ampliar a cobertura do runtime.
 
